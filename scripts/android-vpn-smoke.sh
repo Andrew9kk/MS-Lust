@@ -93,10 +93,12 @@ if [[ -z "$APK" ]]; then
 fi
 [[ -f "$APK" ]] || fail "APK not found for device ABI: $APK"
 stop_runtime
-"$ADB" install -r "$APK" >/dev/null
+if [[ "${SKIP_APK_INSTALL:-0}" != "1" ]]; then
+  "$ADB" install -r --no-streaming "$APK" >/dev/null
+fi
 "$ADB" logcat -c
 "$ADB" shell am force-stop "$PACKAGE"
-"$ADB" shell monkey -p "$PACKAGE" 1 >/dev/null
+"$ADB" shell am start -W -n "$PACKAGE/.MainActivity" >/dev/null
 wait_for_text "ПОДКЛЮЧИТЬ"
 
 expected_engine="${EXPECT_ENGINE:-XRAY}"

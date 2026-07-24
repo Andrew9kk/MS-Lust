@@ -8,9 +8,20 @@ PACKAGE="com.envy.dualcorevpn"
 [[ "$ENGINE" == "XRAY" || "$ENGINE" == "SING_BOX" ]] || { echo "unsupported engine: $ENGINE" >&2; exit 2; }
 [[ -f "$APK" ]] || { echo "APK not found: $APK" >&2; exit 2; }
 
-"$ADB" install -r "$APK" >/dev/null
+"$ADB" wait-for-device
+installed=false
+for attempt in 1 2 3; do
+  if "$ADB" install -r --no-streaming "$APK" >/dev/null; then
+    installed=true
+    break
+  fi
+  echo "APK install attempt $attempt failed; retrying" >&2
+  "$ADB" wait-for-device
+  sleep $((attempt * 5))
+done
+$installed || { echo "APK installation failed after 3 attempts" >&2; exit 1; }
 "$ADB" shell appops set "$PACKAGE" ACTIVATE_VPN allow
-"$ADB" shell monkey -p "$PACKAGE" 1 >/dev/null
+"$ADB" shell am start -W -n "$PACKAGE/.MainActivity" >/dev/null
 for _ in $(seq 1 20); do
   "$ADB" shell run-as "$PACKAGE" test -d shared_prefs 2>/dev/null && break
   sleep 1

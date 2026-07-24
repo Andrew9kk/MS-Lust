@@ -116,7 +116,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             bash scripts/seed-android-smoke.sh "${{ matrix.engine }}" app/build/outputs/apk/debug/app-x86_64-debug.apk
-            EXPECT_ENGINE="${{ matrix.engine }}" bash scripts/android-vpn-smoke.sh app/build/outputs/apk/debug/app-x86_64-debug.apk
+            SKIP_APK_INSTALL=1 EXPECT_ENGINE="${{ matrix.engine }}" bash scripts/android-vpn-smoke.sh app/build/outputs/apk/debug/app-x86_64-debug.apk
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
