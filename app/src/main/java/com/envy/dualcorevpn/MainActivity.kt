@@ -13,6 +13,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -57,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -1140,9 +1145,13 @@ private fun SettingsScreen(
     ) {
         item { ScreenTitle("Настройки", "Маршрутизация без лишней сложности") }
         item { SettingsSectionTitle("КАК НАПРАВЛЯТЬ ТРАФИК") }
-        item { SettingsCard("Всё через VPN", "Все сайты и приложения используют выбранный сервер", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, onClick = { routingMode = RoutingMode.ALL }) }
-        item { SettingsCard("Обход локальной сети", "Роутер и домашние устройства открываются напрямую", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, onClick = { routingMode = RoutingMode.BYPASS_LAN }) }
-        item { SettingsCard("Свои исключения", "Указанные домены и IP идут напрямую", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, onClick = { routingMode = RoutingMode.CUSTOM }) }
+        item {
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SettingsCard("Всё через VPN", "Все сайты и приложения используют выбранный сервер", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, selectionControl = true, onClick = { routingMode = RoutingMode.ALL })
+                SettingsCard("Обход локальной сети", "Роутер и домашние устройства открываются напрямую", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, selectionControl = true, onClick = { routingMode = RoutingMode.BYPASS_LAN })
+                SettingsCard("Свои исключения", "Указанные домены и IP идут напрямую", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, selectionControl = true, onClick = { routingMode = RoutingMode.CUSTOM })
+            }
+        }
         if (routingMode == RoutingMode.CUSTOM) {
             item {
                 OutlinedTextField(
@@ -1263,8 +1272,14 @@ private fun SettingsCard(
     value: String,
     enabled: Boolean = true,
     selected: Boolean = false,
+    selectionControl: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
+    val interactionModifier = when {
+        !enabled || onClick == null -> Modifier
+        selectionControl -> Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+        else -> Modifier.clickable(onClick = onClick)
+    }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = when {
@@ -1275,7 +1290,7 @@ private fun SettingsCard(
         ),
         border = BorderStroke(1.dp, if (selected) Accent.copy(alpha = .6f) else Outline),
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().then(if (enabled && onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        modifier = Modifier.fillMaxWidth().then(interactionModifier),
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

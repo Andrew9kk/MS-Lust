@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -28,19 +28,19 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
 
       - name: Install Android SDK packages
         run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
@@ -66,7 +66,7 @@ jobs:
           (cd dist && sha256sum *.apk | sort | tee SHA256SUMS.txt)
 
       - name: Upload CI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: Lust-${{ github.sha }}
           path: dist/
@@ -83,19 +83,19 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
 
       - name: Install Android SDK packages
         run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
@@ -107,7 +107,7 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug --stacktrace
 
       - name: Run API 34 VPN smoke
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 34
           arch: x86_64
@@ -123,12 +123,14 @@ jobs:
     needs: [build, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Download verified APK artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: Lust-${{ github.sha }}
           path: dist
