@@ -138,7 +138,7 @@ for cycle in 1 2; do
 
   click_text "ОТКЛЮЧИТЬ"
   wait_for_no_tun
-  "$ADB" shell monkey -p "$PACKAGE" 1 >/dev/null
+  "$ADB" shell am start -W -n "$PACKAGE/.MainActivity" >/dev/null
   wait_for_text "ПОДКЛЮЧИТЬ"
   if [[ "${EXPECT_ENGINE:-XRAY}" == "SING_BOX" ]] && "$ADB" shell pidof libsingbox.so >/dev/null 2>&1; then
     fail "sing-box subprocess remained after disconnect in cycle $cycle"
