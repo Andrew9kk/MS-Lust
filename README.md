@@ -27,7 +27,7 @@
 
 ## О проекте
 
-**Lust** — Android VPN-клиент с собственным тёмным интерфейсом, управлением подписками и нативным сетевым конвейером на базе Xray-core и HEV tun2socks.
+**Lust** — Android VPN-клиент с тёмным интерфейсом, управлением подписками и нативным сетевым конвейером на базе Xray-core или sing-box и HEV tun2socks.
 
 Проект создаётся как понятная, расширяемая альтернатива перегруженным универсальным клиентам: обычные действия доступны из основного интерфейса, а технические события и ошибки не скрываются от пользователя.
 
@@ -39,27 +39,28 @@
 ### Уже реализовано
 
 - тёмный интерфейс на **Jetpack Compose + Material 3**;
-- главный экран, серверы, подписки, журнал и настройки;
-- добавление и обновление подписок по URL;
+- единая главная с подключением, серверами и подписками; нижняя навигация из трёх разделов;
+- добавление, обновление и безопасный deep-link/clipboard импорт подписок;
+- versioned export/import резервной копии через системный Android document picker с подтверждением и валидацией;
 - Base64 и plain-text списки серверов;
 - импорт ссылок **VLESS, VMess, Trojan и Shadowsocks**;
-- сохранение подписок и выбранного сервера;
-- Android `VpnService` и foreground-уведомление;
-- запуск **Xray-core** через `AndroidLibXrayLite`;
-- преобразование TUN → SOCKS через **HEV tun2socks**;
-- state machine: подключение, работа, отключение и ошибка;
-- персистентный журнал событий UI/core/service со stack trace;
-- автоматические unit-тесты и сборка APK в GitHub Actions.
+- группы, поиск, избранное, TCP endpoint latency и сортировка серверов;
+- трафик, лимит и срок действия из `subscription-userinfo`;
+- Android `VpnService`, foreground-уведомление и HEV tun2socks;
+- реальное переключение **Xray-core / sing-box 1.13.14**;
+- state machine, crash recovery и fail-closed проверка sing-box-конфигурации;
+- настройки MTU, DNS, IPv6 и выбор ядра;
+- персистентный журнал с фильтрами, очисткой и экспортом;
+- unit-тесты, Android smoke и сборка в GitHub Actions;
+- universal APK и уменьшенные APK для четырёх ABI с SHA-256.
 
 ### В разработке
 
-- стабилизация полного connect/disconnect pipeline на реальном устройстве;
-- фильтры, поиск и экспорт журнала;
-- статистика трафика и задержки;
-- гибкая маршрутизация, DNS и правила;
-- автоматическое восстановление после смены сети;
-- настоящее переключение Xray / sing-box;
-- production signing и оптимизированные ABI-релизы.
+- импорт QR-кодов;
+- split tunneling и пользовательские правила;
+- Hysteria2, XHTTP/HTTPUpgrade и дополнительные sing-box transports;
+- quick settings tile и проверка обновлений;
+- production signing и широкая device matrix.
 
 ## Поддерживаемые форматы
 
@@ -70,7 +71,7 @@
 | Trojan | ✅ | ✅ | Alpha |
 | Shadowsocks | ✅ | ✅ | Alpha |
 | Subscription URL | ✅ | — | Base64 или plain text |
-| sing-box runtime | — | — | Запланирован, не реализован |
+| sing-box runtime | — | ✅ | 1.13.14, переключение в настройках |
 
 > Поддержка формата ссылки не означает совместимость со всеми комбинациями transport/security. Перед использованием проверяйте конкретный профиль и журнал подключения.
 
@@ -118,15 +119,19 @@ Android traffic → TUN → HEV → SOCKS 127.0.0.1:10808 → Xray → сеть
 
 ## Скачать
 
-Готовые сборки публикуются на странице [GitHub Releases](https://github.com/envywook/Lust/releases).
+Готовые сборки и описание изменений публикуются на странице [GitHub Releases](https://github.com/envywook/Lust/releases). Полная история — в [CHANGELOG.md](CHANGELOG.md).
 
-Последняя alpha-версия:
+Выбирайте файл по архитектуре устройства:
 
-- [Lust v0.1.1-alpha](https://github.com/envywook/Lust/releases/tag/v0.1.1-alpha)
-- [APK](https://github.com/envywook/Lust/releases/download/v0.1.1-alpha/Lust-v0.1.1-alpha-debug.apk)
-- [SHA256SUMS.txt](https://github.com/envywook/Lust/releases/download/v0.1.1-alpha/SHA256SUMS.txt)
+| APK | Для кого | Размер debug-сборки |
+|---|---|---:|
+| `arm64-v8a` | большинство современных телефонов | ~49 MiB |
+| `armeabi-v7a` | старые 32-битные ARM-устройства | ~50 MiB |
+| `x86_64` | эмуляторы и редкие x86_64-устройства | ~51 MiB |
+| `x86` | старые x86-устройства/эмуляторы | ~52 MiB |
+| `universal` | если архитектура неизвестна | ~151 MiB |
 
-Для APK проверяйте SHA-256 перед установкой. Android может предупреждать об установке приложения вне магазина — это нормально для GitHub-сборки.
+ABI-specific APK примерно на 65–68% меньше universal. Для каждого релиза публикуется `SHA256SUMS.txt`; проверяйте checksum перед установкой. Android может предупреждать об установке приложения вне магазина — это нормально для GitHub-сборки.
 
 ## Сборка
 
@@ -151,10 +156,14 @@ cd Lust
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-APK появится здесь:
+APK появятся здесь:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+app/build/outputs/apk/debug/app-armeabi-v7a-debug.apk
+app/build/outputs/apk/debug/app-x86_64-debug.apk
+app/build/outputs/apk/debug/app-x86-debug.apk
+app/build/outputs/apk/debug/app-universal-debug.apk
 ```
 
 Нативные бинарники не хранятся в Git. `prepare-native-deps.sh` загружает закреплённые версии и проверяет SHA-256:

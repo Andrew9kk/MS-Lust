@@ -3,7 +3,7 @@ set -euo pipefail
 
 ADB="${ADB:-adb}"
 PACKAGE="com.envy.dualcorevpn"
-APK="${1:-app/build/outputs/apk/debug/app-debug.apk}"
+APK="${1:-}"
 TMP_DIR="$(mktemp -d)"
 
 stop_runtime() {
@@ -87,7 +87,11 @@ wait_for_no_tun() {
 }
 
 "$ADB" get-state >/dev/null || fail "ADB device unavailable"
-[[ -f "$APK" ]] || fail "APK not found: $APK"
+if [[ -z "$APK" ]]; then
+  device_abi="$("$ADB" shell getprop ro.product.cpu.abi | tr -d '\r')"
+  APK="app/build/outputs/apk/debug/app-${device_abi}-debug.apk"
+fi
+[[ -f "$APK" ]] || fail "APK not found for device ABI: $APK"
 stop_runtime
 "$ADB" install -r "$APK" >/dev/null
 "$ADB" logcat -c
@@ -95,15 +99,24 @@ stop_runtime
 "$ADB" shell monkey -p "$PACKAGE" 1 >/dev/null
 wait_for_text "ПОДКЛЮЧИТЬ"
 
+expected_engine="${EXPECT_ENGINE:-XRAY}"
+settings_xml="$("$ADB" exec-out run-as "$PACKAGE" cat shared_prefs/vpn_settings.xml 2>/dev/null || true)"
+configured_engine="$(grep -oE '<string name="engine">[^<]+' <<<"$settings_xml" | sed 's/.*>//' | tr -d '\r' || true)"
+configured_engine="${configured_engine:-XRAY}"
+[[ "$configured_engine" == "$expected_engine" ]] || fail "configured engine is $configured_engine, expected $expected_engine"
+
 for cycle in 1 2; do
   click_text "ПОДКЛЮЧИТЬ"
   wait_for_text "Соединение защищено"
   wait_for_vpn
 
-  if [[ "${EXPECT_ENGINE:-XRAY}" == "SING_BOX" ]]; then
+  runtime_log="$("$ADB" exec-out run-as "$PACKAGE" cat files/logs/lust.log 2>/dev/null || true)"
+  if [[ "$expected_engine" == "SING_BOX" ]]; then
     "$ADB" shell pidof libsingbox.so >/dev/null || fail "sing-box subprocess is not running in cycle $cycle"
-    "$ADB" shell run-as "$PACKAGE" grep -q 'READY' files/logs/lust.log ||
-      fail "sing-box READY evidence missing in cycle $cycle"
+    grep -q 'SING_BOX.*READY' <<<"$runtime_log" || fail "sing-box READY evidence missing in cycle $cycle"
+  else
+    "$ADB" shell pidof libsingbox.so >/dev/null 2>&1 && fail "sing-box subprocess is running during Xray cycle $cycle"
+    grep -q 'Starting XRAY + HEV session' <<<"$runtime_log" || fail "Xray startup evidence missing in cycle $cycle"
   fi
 
   # ICMP is not supported by the SOCKS transport. Verify TCP and DNS instead.

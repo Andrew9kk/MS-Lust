@@ -2,6 +2,7 @@ package com.envy.dualcorevpn.subscription
 
 import android.content.Context
 import android.util.Base64
+import com.envy.dualcorevpn.server.ServerFavoritesCodec
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
@@ -16,6 +17,7 @@ data class Subscription(
     val name: String,
     val url: String,
     val updatedAt: Long = 0L,
+    val usage: SubscriptionUsage? = null,
 )
 
 data class ServerProfile(
@@ -27,6 +29,9 @@ data class ServerProfile(
     val port: Int,
     val config: String,
 )
+
+private fun JSONObject.optNullableLong(key: String): Long? =
+    if (has(key) && !isNull(key)) optLong(key) else null
 
 class SubscriptionRepository(context: Context) {
     private val preferences = context.getSharedPreferences("subscriptions", Context.MODE_PRIVATE)
@@ -40,6 +45,14 @@ class SubscriptionRepository(context: Context) {
                     name = it.getString("name"),
                     url = it.getString("url"),
                     updatedAt = it.optLong("updatedAt"),
+                    usage = if (it.has("usage")) it.getJSONObject("usage").let { usage ->
+                        SubscriptionUsage(
+                            uploadBytes = usage.optNullableLong("upload"),
+                            downloadBytes = usage.optNullableLong("download"),
+                            totalBytes = usage.optNullableLong("total"),
+                            expiresAtEpochSeconds = usage.optNullableLong("expire"),
+                        )
+                    } else null,
                 )
             }
         }
@@ -64,6 +77,18 @@ class SubscriptionRepository(context: Context) {
 
     fun selectedServerId(): String? = preferences.getString(KEY_SELECTED, null)
 
+    fun favoriteServerIds(): Set<String> = ServerFavoritesCodec.decode(preferences.getString(KEY_FAVORITES, ""))
+
+    fun toggleFavorite(serverId: String): Set<String> {
+        val updated = favoriteServerIds().toMutableSet().apply {
+            if (!add(serverId)) remove(serverId)
+        }
+        check(preferences.edit().putString(KEY_FAVORITES, ServerFavoritesCodec.encode(updated)).commit()) {
+            "Не удалось сохранить избранные серверы"
+        }
+        return updated
+    }
+
     fun select(serverId: String?) {
         preferences.edit().putString(KEY_SELECTED, serverId).apply()
     }
@@ -76,12 +101,14 @@ class SubscriptionRepository(context: Context) {
         val existing = current.firstOrNull { it.url == url }
         val subscription = (existing ?: Subscription(UUID.randomUUID().toString(), name.ifBlank { hostName(url) }, url))
             .copy(name = name.ifBlank { existing?.name ?: hostName(url) })
+        val fetched = fetch(subscription)
+        val enrichedSubscription = subscription.copy(usage = fetched.usage ?: subscription.usage)
         val plan = SubscriptionRefreshPlanner.plan(
             subscriptions = current,
             servers = servers(),
             selectedServerId = selectedServerId(),
-            subscription = subscription,
-            report = fetch(subscription),
+            subscription = enrichedSubscription,
+            report = fetched.report,
             updatedAt = System.currentTimeMillis(),
         )
         persist(plan)
@@ -89,12 +116,13 @@ class SubscriptionRepository(context: Context) {
     }
 
     suspend fun update(subscription: Subscription): SubscriptionUpdateResult {
+        val fetched = fetch(subscription)
         val plan = SubscriptionRefreshPlanner.plan(
             subscriptions = subscriptions(),
             servers = servers(),
             selectedServerId = selectedServerId(),
-            subscription = subscription,
-            report = fetch(subscription),
+            subscription = subscription.copy(usage = fetched.usage ?: subscription.usage),
+            report = fetched.report,
             updatedAt = System.currentTimeMillis(),
         )
         persist(plan)
@@ -108,7 +136,12 @@ class SubscriptionRepository(context: Context) {
         if (remaining.none { it.id == selectedServerId() }) select(remaining.firstOrNull()?.id)
     }
 
-    private suspend fun fetch(subscription: Subscription): SubscriptionParser.ParseReport {
+    private data class FetchedSubscription(
+        val report: SubscriptionParser.ParseReport,
+        val usage: SubscriptionUsage?,
+    )
+
+    private suspend fun fetch(subscription: Subscription): FetchedSubscription {
         val connection = URL(subscription.url).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
         connection.readTimeout = 20_000
@@ -117,7 +150,10 @@ class SubscriptionRepository(context: Context) {
         return try {
             require(connection.responseCode in 200..299) { "Сервер подписки ответил HTTP ${connection.responseCode}" }
             val body = connection.inputStream.bufferedReader().use { it.readText() }
-            SubscriptionParser.parseReport(subscription.id, body)
+            FetchedSubscription(
+                report = SubscriptionParser.parseReport(subscription.id, body),
+                usage = SubscriptionUsageParser.parse(connection.getHeaderField("subscription-userinfo")),
+            )
         } finally {
             connection.disconnect()
         }
@@ -140,6 +176,14 @@ class SubscriptionRepository(context: Context) {
         val array = JSONArray()
         items.forEach { item -> array.put(JSONObject().apply {
             put("id", item.id); put("name", item.name); put("url", item.url); put("updatedAt", item.updatedAt)
+            item.usage?.let { usage ->
+                put("usage", JSONObject().apply {
+                    usage.uploadBytes?.let { put("upload", it) }
+                    usage.downloadBytes?.let { put("download", it) }
+                    usage.totalBytes?.let { put("total", it) }
+                    usage.expiresAtEpochSeconds?.let { put("expire", it) }
+                })
+            }
         }) }
         return array
     }
@@ -163,6 +207,7 @@ class SubscriptionRepository(context: Context) {
         const val KEY_SUBSCRIPTIONS = "subscriptions"
         const val KEY_SERVERS = "servers"
         const val KEY_SELECTED = "selected_server"
+        const val KEY_FAVORITES = "favorite_servers"
     }
 }
 

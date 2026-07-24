@@ -1,0 +1,43 @@
+# История изменений Lust
+
+Все заметные изменения Android-клиента фиксируются здесь и дублируются в описании соответствующего GitHub Release.
+
+## [Unreleased]
+
+## [0.1.4-alpha] — 2026-07-24
+
+### Добавлено
+- объединённая главная: подключение, серверы и подписки на одном экране;
+- поиск, группы, избранное и сортировка серверов по имени/задержке;
+- безопасный импорт подписки через `lust://add` и `lust://subscription` с подтверждением;
+- чтение трафика, лимита и срока подписки из стандартного `subscription-userinfo`;
+- versioned backup подписок, серверов, выбора, избранного и VPN-настроек через Android document picker;
+- отдельные APK для `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86` и universal APK.
+
+### Изменено
+- нижняя навигация сокращена до «Главная», «Журнал», «Настройки»;
+- URL подписки больше не показывается на главной, чтобы не раскрывать token;
+- ABI-specific APK уменьшают загрузку примерно на 65–68% относительно universal debug APK;
+- release workflow требует явные release notes и публикует SHA-256 для всех APK.
+
+### Безопасность
+- deep link и clipboard требуют подтверждения до сетевого запроса;
+- backup ограничен по размеру, семантически валидируется до записи и восстанавливается транзакционно;
+- URL подписок, clipboard и содержимое backup не записываются в журнал.
+
+### Проверено
+- clean unit/build/lint и отсутствие ошибок `git diff --check`;
+- Android API 34: реальный импорт backup через DocumentsUI;
+- Xray и sing-box: по два цикла TCP/DNS, connect/disconnect, очистка TUN и отсутствие fatal logs.
+
+## [0.1.3-alpha] — 2026-07-24
+
+### Добавлено
+- настоящий sing-box 1.13.14 runtime с переключением Xray/sing-box;
+- lifecycle/crash recovery и fail-closed конвертация конфигурации;
+- переработанный Compose-интерфейс;
+- лицензия и provenance встроенного sing-box.
+
+### Проверено
+- unit/build/lint gates;
+- Android API 34: sing-box TCP/DNS, Xray regression, disconnect/reconnect и аварийный cleanup.
