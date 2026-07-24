@@ -81,6 +81,7 @@ import com.envy.dualcorevpn.server.ServerLatencyResult
 import com.envy.dualcorevpn.server.ServerLatencyTester
 import com.envy.dualcorevpn.server.PlannedServer
 import com.envy.dualcorevpn.server.ServerListPlanner
+import com.envy.dualcorevpn.routing.RoutingMode
 import com.envy.dualcorevpn.server.ServerSort
 import com.envy.dualcorevpn.settings.VpnSettings
 import com.envy.dualcorevpn.settings.VpnSettingsRepository
@@ -1128,13 +1129,38 @@ private fun SettingsScreen(
     var dnsServer by remember(settings) { mutableStateOf(settings.dnsServer) }
     var ipv6Enabled by remember(settings) { mutableStateOf(settings.ipv6Enabled) }
     var engine by remember(settings) { mutableStateOf(settings.engine) }
+    var routingMode by remember(settings) { mutableStateOf(settings.routingMode) }
+    var routingRules by remember(settings) { mutableStateOf(settings.routingRules) }
+    var showAdvanced by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { ScreenTitle("Настройки", "Реальные параметры Android VPN и HEV") }
+        item { ScreenTitle("Настройки", "Маршрутизация без лишней сложности") }
+        item { SettingsSectionTitle("КАК НАПРАВЛЯТЬ ТРАФИК") }
+        item { SettingsCard("Всё через VPN", "Все сайты и приложения используют выбранный сервер", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, onClick = { routingMode = RoutingMode.ALL }) }
+        item { SettingsCard("Обход локальной сети", "Роутер и домашние устройства открываются напрямую", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, onClick = { routingMode = RoutingMode.BYPASS_LAN }) }
+        item { SettingsCard("Свои исключения", "Указанные домены и IP идут напрямую", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, onClick = { routingMode = RoutingMode.CUSTOM }) }
+        if (routingMode == RoutingMode.CUSTOM) {
+            item {
+                OutlinedTextField(
+                    value = routingRules,
+                    onValueChange = { routingRules = it.take(4096) },
+                    label = { Text("Домены и IP — по одному на строке") },
+                    placeholder = { Text("example.com\n192.168.50.0/24") },
+                    minLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        item {
+            OutlinedButton(onClick = { showAdvanced = !showAdvanced }, modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                Text(if (showAdvanced) "СКРЫТЬ РАСШИРЕННЫЕ" else "РАСШИРЕННЫЕ НАСТРОЙКИ")
+            }
+        }
+        if (showAdvanced) {
         item { SettingsSectionTitle("ЯДРО") }
         item {
             SettingsCard(
@@ -1188,11 +1214,12 @@ private fun SettingsScreen(
                 }
             }
         }
+        }
         validationError?.let { error -> item { Text(error, color = Danger, fontSize = 13.sp) } }
         item {
             Button(
                 onClick = {
-                    runCatching { VpnSettings.validate(mtu, dnsServer, ipv6Enabled, engine) }
+                    runCatching { VpnSettings.validate(mtu, dnsServer, ipv6Enabled, engine, routingMode, routingRules) }
                         .onSuccess { validationError = null; onSave(it) }
                         .onFailure { validationError = it.message ?: "Некорректные настройки" }
                 },
@@ -1200,6 +1227,7 @@ private fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp),
             ) { Text("СОХРАНИТЬ") }
         }
+        if (showAdvanced) {
         item { SettingsSectionTitle("РЕЗЕРВНАЯ КОПИЯ") }
         item {
             Text(
@@ -1219,6 +1247,7 @@ private fun SettingsScreen(
         item { SettingsCard("HEV tun2socks", "Android TUN → HEV → SOCKS 127.0.0.1:10808 → ${if (engine == EngineKind.XRAY) "Xray" else "sing-box"}", "ВКЛЮЧЕНО") }
         item { SettingsCard("Постоянный журнал", "Core/service stack trace, поиск, фильтры, экспорт, ротация 2 МБ", "ВКЛЮЧЕНО") }
         item { SettingsCard("Версия приложения", "Alpha · настройки применяются при следующем подключении", BuildConfig.VERSION_NAME) }
+        }
     }
 }
 

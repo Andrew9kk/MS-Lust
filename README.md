@@ -49,7 +49,8 @@
 - Android `VpnService`, foreground-уведомление и HEV tun2socks;
 - реальное переключение **Xray-core / sing-box 1.13.14**;
 - state machine, crash recovery и fail-closed проверка sing-box-конфигурации;
-- настройки MTU, DNS, IPv6 и выбор ядра;
+- простые режимы маршрутизации для обоих ядер: всё через VPN, обход LAN и собственные исключения доменов/IP;
+- расширенные MTU, DNS, IPv6, выбор ядра и backup скрыты от основного экрана;
 - персистентный журнал с фильтрами, очисткой и экспортом;
 - unit-тесты, Android smoke и сборка в GitHub Actions;
 - universal APK и уменьшенные APK для четырёх ABI с SHA-256.
@@ -57,7 +58,7 @@
 ### В разработке
 
 - импорт QR-кодов;
-- split tunneling и пользовательские правила;
+- исключение отдельных приложений из VPN;
 - Hysteria2, XHTTP/HTTPUpgrade и дополнительные sing-box transports;
 - quick settings tile и проверка обновлений;
 - production signing и широкая device matrix.

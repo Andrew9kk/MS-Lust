@@ -1,5 +1,8 @@
 package com.envy.dualcorevpn.core
 
+import com.envy.dualcorevpn.routing.RoutingPolicy
+import com.envy.dualcorevpn.routing.XrayRouting
+
 internal interface XrayGateway {
     fun start(config: String, tunFileDescriptor: Int)
     fun stop()
@@ -10,18 +13,19 @@ internal interface XrayGateway {
 internal class XrayEngine(
     private val gateway: XrayGateway,
     private val validator: XrayConfigValidator = XrayConfigValidator,
+    private val routingPolicy: RoutingPolicy = RoutingPolicy(),
 ) : CoreEngine {
     override val kind = EngineKind.XRAY
 
     override suspend fun validate(config: String): ValidationResult =
-        validator.validate(config)
+        validator.validate(XrayRouting.apply(config, routingPolicy))
 
     override suspend fun start(config: String, tunFileDescriptor: Int) {
         val validation = validate(config)
         require(validation is ValidationResult.Valid) {
             (validation as ValidationResult.Invalid).reason
         }
-        gateway.start(config, tunFileDescriptor)
+        gateway.start(XrayRouting.apply(config, routingPolicy), tunFileDescriptor)
     }
 
     override suspend fun stop() {

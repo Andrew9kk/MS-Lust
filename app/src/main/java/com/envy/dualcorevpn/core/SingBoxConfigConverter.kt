@@ -1,12 +1,14 @@
 package com.envy.dualcorevpn.core
 
+import com.envy.dualcorevpn.routing.RoutingMode
+import com.envy.dualcorevpn.routing.RoutingPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 
 object SingBoxConfigConverter {
     const val SOCKS_PORT = 10808
 
-    fun convert(xrayConfig: String): String {
+    fun convert(xrayConfig: String, policy: RoutingPolicy = RoutingPolicy()): String {
         val root = JSONObject(xrayConfig)
         val routing = root.optJSONObject("routing")
         require(routing == null || routing.length() == 0) {
@@ -28,9 +30,24 @@ object SingBoxConfigConverter {
                 put("listen", "127.0.0.1")
                 put("listen_port", SOCKS_PORT)
             }))
-            put("outbounds", JSONArray().put(outbound))
-            put("route", JSONObject().put("final", "proxy"))
+            put("outbounds", JSONArray().put(outbound).apply {
+                if (policy.mode != RoutingMode.ALL && outbound.optString("tag") != "direct") {
+                    put(JSONObject().put("type", "direct").put("tag", "direct"))
+                }
+            })
+            put("route", buildRoute(policy))
         }.toString()
+    }
+
+    private fun buildRoute(policy: RoutingPolicy): JSONObject = JSONObject().put("final", "proxy").apply {
+        if (policy.mode == RoutingMode.ALL) return@apply
+        put("rules", JSONArray().put(JSONObject().apply {
+            put("action", "route")
+            put("outbound", "direct")
+            if (policy.mode == RoutingMode.BYPASS_LAN) put("ip_is_private", true)
+            if (policy.domains.isNotEmpty()) put("domain_suffix", JSONArray(policy.domains))
+            if (policy.ipCidrs.isNotEmpty()) put("ip_cidr", JSONArray(policy.ipCidrs))
+        }))
     }
 
     private fun convertOutbound(source: JSONObject): JSONObject {

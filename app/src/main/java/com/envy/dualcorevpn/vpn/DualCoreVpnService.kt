@@ -110,11 +110,13 @@ class DualCoreVpnService : VpnService() {
             EngineKind.XRAY -> XrayEngine(
                 gateway = NativeXrayGateway(),
                 validator = XrayConfigValidator,
+                routingPolicy = settings.routingPolicy,
             )
             EngineKind.SING_BOX -> SingBoxEngine(
-                NativeSingBoxGateway(this) { exitCode ->
+                gateway = NativeSingBoxGateway(this) { exitCode ->
                     handleRuntimeFailure(EngineKind.SING_BOX, "sing-box stopped unexpectedly (exit=$exitCode)")
                 },
+                routingPolicy = settings.routingPolicy,
             )
         }
         val tunTransport = AndroidTunSessionTransport(

@@ -1,5 +1,7 @@
 package com.envy.dualcorevpn.settings
 
+import com.envy.dualcorevpn.routing.RoutingMode
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import kotlin.test.assertFailsWith
@@ -17,6 +19,12 @@ class VpnSettingsTest {
     fun `rejects mtu outside supported range`() {
         assertFailsWith<IllegalArgumentException> { VpnSettings.validate("575", "1.1.1.1", true) }
         assertFailsWith<IllegalArgumentException> { VpnSettings.validate("9001", "1.1.1.1", true) }
+    }
+
+    @Test
+    fun `drops hidden custom rules outside custom mode`() {
+        val settings = VpnSettings.validate("1500", "1.1.1.1", true, routingMode = RoutingMode.BYPASS_LAN, routingRules = "private.example")
+        assertEquals("", settings.routingRules)
     }
 
     @Test
