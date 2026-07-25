@@ -7,6 +7,9 @@ object XrayConfigValidator {
         if (config.isBlank()) return ValidationResult.Invalid("Configuration is empty")
         return try {
             val root = JSONObject(config)
+            if (root.optString("lust_format") == "sing-box") {
+                return ValidationResult.Invalid("Этот профиль поддерживается только ядром sing-box")
+            }
             val outbounds = root.optJSONArray("outbounds")
             if (outbounds == null || outbounds.length() == 0) {
                 ValidationResult.Invalid("At least one outbound is required")

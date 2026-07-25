@@ -233,7 +233,9 @@ object SubscriptionParser {
             .filter { it.isNotBlank() && !it.startsWith("#") }
             .forEach { line ->
                 val supported = line.startsWith("vmess://") || line.startsWith("vless://") ||
-                    line.startsWith("trojan://") || line.startsWith("ss://")
+                    line.startsWith("trojan://") || line.startsWith("ss://") ||
+                    line.startsWith("hysteria2://") || line.startsWith("hy2://") ||
+                    line.startsWith("tuic://") || line.startsWith("naive+https://")
                 if (!supported) {
                     unsupported++
                     return@forEach
@@ -254,6 +256,9 @@ object SubscriptionParser {
         line.startsWith("vless://") -> parseStandardUri(subscriptionId, line, "vless")
         line.startsWith("trojan://") -> parseStandardUri(subscriptionId, line, "trojan")
         line.startsWith("ss://") -> parseStandardUri(subscriptionId, line, "shadowsocks")
+        line.startsWith("hysteria2://") || line.startsWith("hy2://") -> parseHysteria2(subscriptionId, line)
+        line.startsWith("tuic://") -> parseTuic(subscriptionId, line)
+        line.startsWith("naive+https://") -> parseNaive(subscriptionId, line)
         else -> null
     }
 
@@ -313,7 +318,112 @@ object SubscriptionParser {
             network = query["type"] ?: "tcp", security = query["security"] ?: if (protocol == "trojan") "tls" else "",
             host = query["host"] ?: "", path = query["path"] ?: "", sni = query["sni"] ?: query["serverName"] ?: "",
             fingerprint = query["fp"] ?: "", publicKey = query["pbk"] ?: "", shortId = query["sid"] ?: "",
+            xhttpMode = query["mode"] ?: "",
+            xhttpPadding = parseXhttpPadding(query["extra"]),
         ))
+    }
+
+    private fun parseHysteria2(subscriptionId: String, source: String): ServerProfile {
+        val uri = URI(source)
+        val address = uri.host ?: error("В Hysteria2-ссылке отсутствует адрес сервера")
+        val port = uri.port.takeIf { it > 0 } ?: 443
+        val password = uri.rawUserInfo?.let(::decode)?.takeIf(String::isNotBlank)
+            ?: error("В Hysteria2-ссылке отсутствует пароль")
+        val query = parseQuery(uri.rawQuery)
+        val outbound = nativeOutbound("hysteria2", address, port).apply {
+            put("password", password)
+            query["upmbps"]?.toIntOrNull()?.let { put("up_mbps", it) }
+            query["downmbps"]?.toIntOrNull()?.let { put("down_mbps", it) }
+            val obfsType = query["obfs"].orEmpty()
+            val obfsPassword = query["obfs-password"] ?: query["obfsPassword"]
+            if (obfsType.isNotBlank()) put("obfs", JSONObject().put("type", obfsType).apply {
+                if (!obfsPassword.isNullOrBlank()) put("password", obfsPassword)
+            })
+            put("tls", tlsOptions(address, query))
+        }
+        return nativeProfile(subscriptionId, uri, "hysteria2", address, port, outbound)
+    }
+
+    private fun parseTuic(subscriptionId: String, source: String): ServerProfile {
+        val uri = URI(source)
+        val address = uri.host ?: error("В TUIC-ссылке отсутствует адрес сервера")
+        val port = uri.port.takeIf { it > 0 } ?: 443
+        val credentials = uri.rawUserInfo?.let(::decode)?.split(':', limit = 2).orEmpty()
+        require(credentials.size == 2 && credentials.all(String::isNotBlank)) {
+            "TUIC-ссылка должна содержать UUID и пароль"
+        }
+        val query = parseQuery(uri.rawQuery)
+        val udpOverStream = query.boolean("udp_over_stream", "udp-over-stream")
+        val udpRelayMode = query["udp_relay_mode"] ?: query["udp-relay-mode"]
+        require(!(udpOverStream && !udpRelayMode.isNullOrBlank())) {
+            "TUIC udp_over_stream несовместим с udp_relay_mode"
+        }
+        val outbound = nativeOutbound("tuic", address, port).apply {
+            put("uuid", credentials[0])
+            put("password", credentials[1])
+            put("congestion_control", query["congestion_control"] ?: query["congestion-control"] ?: "cubic")
+            if (!udpRelayMode.isNullOrBlank()) put("udp_relay_mode", udpRelayMode)
+            if (udpOverStream) put("udp_over_stream", true)
+            if (query.boolean("zero_rtt_handshake", "reduce_rtt")) put("zero_rtt_handshake", true)
+            (query["heartbeat_interval"] ?: query["heartbeat-interval"])?.takeIf(String::isNotBlank)?.let {
+                put("heartbeat", it)
+            }
+            put("tls", tlsOptions(address, query))
+        }
+        return nativeProfile(subscriptionId, uri, "tuic", address, port, outbound)
+    }
+
+    private fun parseNaive(subscriptionId: String, source: String): ServerProfile {
+        val uri = URI(source)
+        val address = uri.host ?: error("В Naive-ссылке отсутствует адрес сервера")
+        val port = uri.port.takeIf { it > 0 } ?: 443
+        val credentials = uri.rawUserInfo?.let(::decode)?.split(':', limit = 2).orEmpty()
+        require(credentials.size == 2) { "Naive-ссылка должна содержать имя пользователя и пароль" }
+        val query = parseQuery(uri.rawQuery)
+        require(!query.boolean("insecure", "allowInsecure")) {
+            "NaiveProxy не поддерживает отключение проверки TLS-сертификата"
+        }
+        require(query["alpn"].isNullOrBlank()) { "NaiveProxy не поддерживает пользовательский ALPN" }
+        val outbound = nativeOutbound("naive", address, port).apply {
+            put("username", credentials[0])
+            put("password", credentials[1])
+            put("tls", tlsOptions(address, query))
+        }
+        return nativeProfile(subscriptionId, uri, "naive", address, port, outbound)
+    }
+
+    private fun nativeOutbound(type: String, address: String, port: Int) = JSONObject().apply {
+        put("type", type)
+        put("tag", "proxy")
+        put("server", address)
+        put("server_port", port)
+    }
+
+    private fun nativeProfile(
+        subscriptionId: String,
+        uri: URI,
+        protocol: String,
+        address: String,
+        port: Int,
+        outbound: JSONObject,
+    ): ServerProfile {
+        val name = decode(uri.rawFragment ?: "$address:$port")
+        val config = JSONObject().put("lust_format", "sing-box").put("outbound", outbound).toString()
+        val id = UUID.nameUUIDFromBytes("$subscriptionId:$protocol:$address:$port:$name".toByteArray()).toString()
+        return ServerProfile(id, subscriptionId, name, protocol, address, port, config)
+    }
+
+    private fun tlsOptions(address: String, query: Map<String, String>) = JSONObject().apply {
+        put("enabled", true)
+        put("server_name", query["sni"] ?: query["peer"] ?: address)
+        if (query.boolean("insecure", "allowInsecure")) put("insecure", true)
+        query["alpn"]?.split(',')?.filter(String::isNotBlank)?.takeIf(List<String>::isNotEmpty)?.let {
+            put("alpn", JSONArray(it))
+        }
+    }
+
+    private fun Map<String, String>.boolean(vararg keys: String): Boolean = keys.any { key ->
+        this[key]?.lowercase() in setOf("1", "true", "yes")
     }
 
     private fun parseShadowsocksSettings(source: String, address: String, port: Int): JSONObject {
@@ -346,7 +456,18 @@ object SubscriptionParser {
         return ServerProfile(UUID.nameUUIDFromBytes("$subscriptionId:$protocol:$address:$port:$name".toByteArray()).toString(), subscriptionId, name, protocol, address, port, config)
     }
 
-    private fun streamSettings(network: String, security: String, host: String, path: String, sni: String, fingerprint: String, publicKey: String, shortId: String): JSONObject = JSONObject().apply {
+    private fun streamSettings(
+        network: String,
+        security: String,
+        host: String,
+        path: String,
+        sni: String,
+        fingerprint: String,
+        publicKey: String,
+        shortId: String,
+        xhttpMode: String = "",
+        xhttpPadding: String = "",
+    ): JSONObject = JSONObject().apply {
         put("network", network.ifBlank { "tcp" })
         if (security.isNotBlank() && security != "none") {
             put("security", security)
@@ -363,6 +484,26 @@ object SubscriptionParser {
             if (host.isNotBlank()) put("headers", JSONObject().put("Host", host))
         })
         if (network == "grpc") put("grpcSettings", JSONObject().put("serviceName", path.removePrefix("/")))
+        if (network == "xhttp") put("xhttpSettings", JSONObject().apply {
+            if (host.isNotBlank()) put("host", host)
+            if (path.isNotBlank()) put("path", path)
+            if (xhttpMode.isNotBlank()) put("mode", xhttpMode)
+            if (xhttpPadding.isNotBlank()) put("xPaddingBytes", xhttpPadding)
+        })
+    }
+
+    private fun parseXhttpPadding(extra: String?): String {
+        if (extra.isNullOrBlank()) return ""
+        val normalized = extra.trim().replace('-', '+').replace('_', '/').let {
+            it + "=".repeat((4 - it.length % 4) % 4)
+        }
+        val decoded = String(java.util.Base64.getDecoder().decode(normalized), StandardCharsets.UTF_8)
+        val options = JSONObject(decoded)
+        val unsupported = options.keys().asSequence().filterNot { it == "xPaddingBytes" }.toList()
+        require(unsupported.isEmpty()) {
+            "Неподдерживаемые параметры XHTTP extra: ${unsupported.joinToString(", ")}"
+        }
+        return options.optString("xPaddingBytes")
     }
 
     private fun parseQuery(query: String?): Map<String, String> = query.orEmpty().split('&').mapNotNull {

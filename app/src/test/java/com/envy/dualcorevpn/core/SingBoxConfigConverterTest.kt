@@ -31,6 +31,34 @@ class SingBoxConfigConverterTest {
     }
 
     @Test
+    fun `native sing-box envelope produces executable config`() {
+        val envelope = """{
+          "lust_format":"sing-box",
+          "outbound":{"type":"hysteria2","server":"hy2.example","server_port":443,"password":"secret","tls":{"enabled":true,"server_name":"hy2.example"}}
+        }"""
+
+        val root = JSONObject(SingBoxConfigConverter.convert(envelope))
+        val outbound = root.getJSONArray("outbounds").getJSONObject(0)
+
+        assertEquals("hysteria2", outbound.getString("type"))
+        assertEquals("proxy", outbound.getString("tag"))
+        assertEquals("hy2.example", outbound.getString("server"))
+        assertEquals("proxy", root.getJSONObject("route").getString("final"))
+    }
+
+    @Test
+    fun `normalizes native outbound tag to route final`() {
+        val envelope = """{
+          "lust_format":"sing-box",
+          "outbound":{"type":"hysteria2","tag":"hy2","server":"hy2.example","server_port":443,"password":"secret","tls":{"enabled":true}}
+        }"""
+
+        val root = JSONObject(SingBoxConfigConverter.convert(envelope))
+        assertEquals("proxy", root.getJSONArray("outbounds").getJSONObject(0).getString("tag"))
+        assertEquals("proxy", root.getJSONObject("route").getString("final"))
+    }
+
+    @Test
     fun `direct profile produces executable sing-box smoke config`() {
         val xray = """{"outbounds":[{"tag":"proxy","protocol":"freedom","settings":{}}]}"""
         val outbound = JSONObject(SingBoxConfigConverter.convert(xray)).getJSONArray("outbounds").getJSONObject(0)

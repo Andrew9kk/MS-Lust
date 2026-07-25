@@ -39,15 +39,15 @@
 ### Уже реализовано
 
 - тёмный интерфейс на **Jetpack Compose + Material 3**;
-- единая главная с подключением, серверами и подписками; нижняя навигация из трёх разделов;
+- единая главная с подключением, серверами, подписками и сворачиваемым журналом; нижняя навигация из двух разделов;
 - добавление, обновление и безопасный deep-link/clipboard импорт подписок;
 - versioned export/import резервной копии через системный Android document picker с подтверждением и валидацией;
 - Base64 и plain-text списки серверов;
-- импорт ссылок **VLESS, VMess, Trojan и Shadowsocks**;
+- импорт ссылок **VLESS, VMess, Trojan, Shadowsocks, Hysteria2/Hy2, TUIC и NaiveProxy**;
 - группы, поиск, избранное, TCP endpoint latency и сортировка серверов;
 - трафик, лимит и срок действия из `subscription-userinfo`;
 - Android `VpnService`, foreground-уведомление и HEV tun2socks;
-- реальное переключение **Xray-core / sing-box 1.13.14**;
+- реальное переключение **Xray-core / sing-box 1.13.14 extended** с XHTTP и Naive outbound;
 - state machine, crash recovery и fail-closed проверка sing-box-конфигурации;
 - простые режимы маршрутизации для обоих ядер: всё через VPN, обход LAN и собственные исключения доменов/IP;
 - расширенные MTU, DNS, IPv6, выбор ядра и backup скрыты от основного экрана;
@@ -59,20 +59,23 @@
 
 - импорт QR-кодов;
 - исключение отдельных приложений из VPN;
-- Hysteria2, XHTTP/HTTPUpgrade и дополнительные sing-box transports;
+- дополнительные форматы подписок и sing-box transports;
 - quick settings tile и проверка обновлений;
 - production signing и широкая device matrix.
 
 ## Поддерживаемые форматы
 
-| Формат | Импорт | Генерация Xray-конфигурации | Статус |
-|---|:---:|:---:|---|
-| VLESS | ✅ | ✅ | Alpha |
-| VMess | ✅ | ✅ | Alpha |
-| Trojan | ✅ | ✅ | Alpha |
-| Shadowsocks | ✅ | ✅ | Alpha |
-| Subscription URL | ✅ | — | Base64 или plain text |
-| sing-box runtime | — | ✅ | 1.13.14, переключение в настройках |
+| Формат | Импорт | Xray | sing-box | Статус |
+|---|:---:|:---:|:---:|---|
+| VLESS | ✅ | ✅ | ✅ | TCP, WS, gRPC; XHTTP — sing-box extended |
+| VMess | ✅ | ✅ | ✅ | Alpha |
+| Trojan | ✅ | ✅ | ✅ | Alpha |
+| Shadowsocks | ✅ | ✅ | ✅ | Alpha |
+| Hysteria2 / Hy2 | ✅ | — | ✅ | Нативный sing-box outbound |
+| TUIC | ✅ | — | ✅ | Нативный sing-box outbound |
+| NaiveProxy | ✅ | — | ✅ | `naive+https://`, Cronet-enabled core |
+| Subscription URL | ✅ | — | — | Base64 или plain text |
+| sing-box runtime | — | — | ✅ | 1.13.14 extended, pinned source и SHA-256 |
 
 > Поддержка формата ссылки не означает совместимость со всеми комбинациями transport/security. Перед использованием проверяйте конкретный профиль и журнал подключения.
 

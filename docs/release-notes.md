@@ -1,3 +1,30 @@
+# Lust v0.1.6-alpha
+
+## Новые протоколы sing-box
+
+- Hysteria2 и alias `hy2://` с TLS, SNI, ALPN, bandwidth и Salamander obfuscation;
+- TUIC с UUID/password, congestion control, UDP relay mode и TLS;
+- NaiveProxy через `naive+https://` на Cronet-enabled core;
+- VLESS/XHTTP, включая TLS/Reality, uTLS fingerprint, host, path, mode и `xPaddingBytes` из `extra`.
+
+## Ядро
+
+- sing-box заменён на воспроизводимый Android API 26 build `1.13.14-extended-2.5.2-lust.1`;
+- exact source: `shtorm-7/sing-box-extended@ff11f007ec798136a5de258f947a4f34011a37ea`;
+- все четыре ABI закреплены SHA-256 и распространяются отдельным versioned core prerelease;
+- Xray отклоняет sing-box-only профили с понятным сообщением вместо запуска несовместимого JSON.
+
+## Проверка
+
+- 75 unit-тестов;
+- Android lint и сборка всех ABI + universal APK;
+- `sing-box check` на Android API 34 для Hysteria2, TUIC, Naive и VLESS/XHTTP;
+- два connect/disconnect цикла, TCP и DNS smoke отдельно для sing-box и Xray, без fatal logs.
+
+> Alpha-сборка использует debug-подпись и предназначена для тестирования.
+
+---
+
 # Lust v0.1.4-alpha
 
 ## Что добавлено

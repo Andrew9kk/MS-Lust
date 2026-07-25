@@ -5,7 +5,9 @@ WORK="$ROOT/.native-build"
 XRAY_TAG="v26.7.19"
 XRAY_SHA256="0242df3843d59bb9aa68ddd52cb2ca443871a24b1f2bee4d5a346e74d5e4ee5d"
 V2RAYNG_TAG="2.2.6"
-SING_BOX_VERSION="1.13.14"
+SING_BOX_VERSION="1.13.14-extended-2.5.2-lust.1"
+SING_BOX_TAG="sing-box-lust-1.13.14-ext2.5.2.1"
+SING_BOX_REPO="envywook/Lust"
 ABIS=(armeabi-v7a arm64-v8a x86 x86_64)
 declare -A APK_NAME APK_URL APK_SHA256
 SING_ARCH=(arm arm64 386 amd64)
@@ -14,10 +16,10 @@ SING_ABI[arm]="armeabi-v7a"
 SING_ABI[arm64]="arm64-v8a"
 SING_ABI[386]="x86"
 SING_ABI[amd64]="x86_64"
-SING_SHA256[arm]="f650977ff36f50ed59135ee8344c622ba737fbb9ff343b9e200fea246a81c181"
-SING_SHA256[arm64]="59a4d18a4108e2f2a1bd49ca547829112712123975092d4a4bf1f443b6f3d747"
-SING_SHA256[386]="c8c146d199a1f6ccd2e00baae10bc3609aa23326ea81785ad652eebcfec516c5"
-SING_SHA256[amd64]="b3a265a7e2dca1a5e77aaa666ad38a155be0d00c14f8b06bba35753f64b13da1"
+SING_SHA256[arm]="c630c3a3c203ec1ab1b9a7fa26c08bbff394913f1fbc2d1b7c8080ac8488fb55"
+SING_SHA256[arm64]="eaf9053dae908cb13dd8b5ebf9362c5574ac607dd40c27b0ca6e8eaf6d089f6c"
+SING_SHA256[386]="88cece7e7bfb5285278308a8993a7fba9cd96bbe198c0b4a84ef70ec741e5732"
+SING_SHA256[amd64]="b8a843bb599b4d6b9d0825b802abf333373c222f50a268dcb3132373e0f1d411"
 APK_NAME[armeabi-v7a]='v2rayNG_2.2.6_armeabi-v7a.apk'
 APK_URL[armeabi-v7a]='https://github.com/2dust/v2rayNG/releases/download/2.2.6/v2rayNG_2.2.6_armeabi-v7a.apk'
 APK_SHA256[armeabi-v7a]='c5149bacb770a4c0e78c2caf6a6b5fda4a4c156f5940cf1d9d7e6214395f7ab2'
@@ -57,7 +59,7 @@ done
 for arch in "${SING_ARCH[@]}"; do
   archive="$WORK/sing-box-$SING_BOX_VERSION-android-$arch.tar.gz"
   curl -fsSL --retry 3 -o "$archive" \
-    "https://github.com/SagerNet/sing-box/releases/download/v$SING_BOX_VERSION/sing-box-$SING_BOX_VERSION-android-$arch.tar.gz"
+    "https://github.com/$SING_BOX_REPO/releases/download/$SING_BOX_TAG/sing-box-$SING_BOX_VERSION-android-$arch.tar.gz"
   echo "${SING_SHA256[$arch]}  $archive" | sha256sum -c -
   abi="${SING_ABI[$arch]}"
   dest="$ROOT/app/src/main/jniLibs/$abi/libsingbox.so"

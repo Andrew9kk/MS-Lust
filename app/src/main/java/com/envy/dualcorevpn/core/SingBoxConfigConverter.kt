@@ -8,21 +8,31 @@ import org.json.JSONObject
 object SingBoxConfigConverter {
     const val SOCKS_PORT = 10808
 
-    fun convert(xrayConfig: String, policy: RoutingPolicy = RoutingPolicy()): String {
-        val root = JSONObject(xrayConfig)
-        val routing = root.optJSONObject("routing")
-        require(routing == null || routing.length() == 0) {
-            "Sing-box conversion does not support custom Xray routing rules"
+    fun convert(sourceConfig: String, policy: RoutingPolicy = RoutingPolicy()): String {
+        val root = JSONObject(sourceConfig)
+        val outbound = if (root.optString("lust_format") == "sing-box") {
+            root.getJSONObject("outbound").also { native ->
+                require(native.optString("type").isNotBlank()) { "Native sing-box outbound type is required" }
+                native.put("tag", "proxy")
+            }
+        } else {
+            val routing = root.optJSONObject("routing")
+            require(routing == null || routing.length() == 0) {
+                "Sing-box conversion does not support custom Xray routing rules"
+            }
+            val outbounds = root.optJSONArray("outbounds") ?: error("At least one outbound is required")
+            val candidates = (0 until outbounds.length()).map(outbounds::getJSONObject)
+            val proxyCandidates = candidates.filterNot { it.optString("protocol") in setOf("freedom", "blackhole", "dns") }
+            require(proxyCandidates.size <= 1) { "Sing-box conversion supports exactly one proxy outbound" }
+            val source = candidates.firstOrNull { it.optString("tag") == "proxy" }
+                ?: candidates.firstOrNull()
+                ?: error("At least one outbound is required")
+            convertOutbound(source)
         }
-        val outbounds = root.optJSONArray("outbounds") ?: error("At least one outbound is required")
-        val candidates = (0 until outbounds.length()).map(outbounds::getJSONObject)
-        val proxyCandidates = candidates.filterNot { it.optString("protocol") in setOf("freedom", "blackhole", "dns") }
-        require(proxyCandidates.size <= 1) { "Sing-box conversion supports exactly one proxy outbound" }
-        val source = candidates.firstOrNull { it.optString("tag") == "proxy" }
-            ?: candidates.firstOrNull()
-            ?: error("At least one outbound is required")
-        val outbound = convertOutbound(source)
-        return JSONObject().apply {
+        return buildConfig(outbound, policy)
+    }
+
+    private fun buildConfig(outbound: JSONObject, policy: RoutingPolicy): String = JSONObject().apply {
             put("log", JSONObject().put("level", "fatal").put("timestamp", true))
             put("inbounds", JSONArray().put(JSONObject().apply {
                 put("type", "socks")
@@ -37,7 +47,6 @@ object SingBoxConfigConverter {
             })
             put("route", buildRoute(policy))
         }.toString()
-    }
 
     private fun buildRoute(policy: RoutingPolicy): JSONObject = JSONObject().put("final", "proxy").apply {
         if (policy.mode == RoutingMode.ALL) return@apply
@@ -145,6 +154,16 @@ object SingBoxConfigConverter {
                 }
                 outbound.put("transport", JSONObject().put("type", "grpc")
                     .put("service_name", grpc.optString("serviceName")))
+            }
+            "xhttp" -> {
+                val xhttp = stream.optJSONObject("xhttpSettings") ?: JSONObject()
+                outbound.put("transport", JSONObject().apply {
+                    put("type", "xhttp")
+                    put("mode", xhttp.optString("mode", "auto"))
+                    put("x_padding_bytes", xhttp.optString("xPaddingBytes", "100-1000"))
+                    xhttp.optString("host").takeIf(String::isNotBlank)?.let { put("host", it) }
+                    xhttp.optString("path").takeIf(String::isNotBlank)?.let { put("path", it) }
+                })
             }
             "tcp", "raw", "" -> Unit
             else -> error("Sing-box transport ${stream.optString("network")} пока не поддерживается")
