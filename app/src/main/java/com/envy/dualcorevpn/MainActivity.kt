@@ -51,6 +51,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,6 +101,7 @@ import com.envy.dualcorevpn.subscription.SubscriptionImportRequest
 import com.envy.dualcorevpn.subscription.SubscriptionRepository
 import com.envy.dualcorevpn.vpn.DualCoreVpnService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
@@ -370,7 +372,7 @@ private fun LustTheme(content: @Composable () -> Unit) {
 }
 
 private enum class AppTab(val title: String) {
-    HOME("Главная"),
+    HOME("Подключение"),
     SETTINGS("Настройки"),
 }
 
@@ -486,8 +488,8 @@ private fun LustApp(
                         label = { Text(item.title, fontSize = 10.sp, maxLines = 1) },
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             selectedIconColor = Accent,
-                            selectedTextColor = ContentPrimary,
-                            indicatorColor = AccentSoft,
+                            selectedTextColor = Accent,
+                            indicatorColor = Color.Transparent,
                             unselectedIconColor = Muted,
                             unselectedTextColor = Muted,
                         ),
@@ -551,7 +553,7 @@ private fun HomeScreen(
         latencyMillis = latencyResults.mapValues { it.value.latencyMillis },
     )
     val serverCount = servers.size
-    val subscriptionCount = subscriptions.size
+
     val connected = state is VpnSessionState.Connected
     val busy = state is VpnSessionState.Connecting || state is VpnSessionState.Disconnecting
     val stateColor = when {
@@ -565,175 +567,150 @@ private fun HomeScreen(
         is VpnSessionState.Connected -> engineName(state.engine)
         is VpnSessionState.Disconnecting -> engineName(state.engine)
         is VpnSessionState.Error -> state.engine?.let(::engineName) ?: "—"
-        VpnSessionState.Disconnected -> "Готово"
+        VpnSessionState.Disconnected -> "—"
+    }
+    val activeSubscription = selected?.subscriptionId?.let { id -> subscriptions.firstOrNull { it.id == id } }
+    var clockMillis by remember(state) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(state) {
+        while (state is VpnSessionState.Connected) {
+            clockMillis = System.currentTimeMillis()
+            delay(1_000L)
+        }
+    }
+    val connectionTime = if (state is VpnSessionState.Connected) {
+        formatDuration((clockMillis - state.startedAtEpochMillis).coerceAtLeast(0L))
+    } else {
+        "00:00:00"
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Spacer(Modifier.height(18.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("LUST", color = ContentPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 4.sp)
-                    Text("PRIVATE NETWORK", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
-                Surface(color = stateColor.copy(alpha = .12f), shape = RoundedCornerShape(50)) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        StatusDot(connected, busy, state is VpnSessionState.Error)
-                        Spacer(Modifier.width(7.dp))
-                        Text(stateLabel(state), color = stateColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
+                    Text("+", color = Accent, fontSize = 25.sp, fontWeight = FontWeight.Light)
                 }
             }
         }
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = SurfaceRaised),
-                border = BorderStroke(1.dp, if (connected) Success.copy(alpha = .45f) else Outline),
-                shape = RoundedCornerShape(28.dp),
-            ) {
-                Column(Modifier.padding(22.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(58.dp).background(if (connected) Success.copy(alpha = .14f) else AccentSoft, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text("Ω", color = if (connected) Success else Accent, fontSize = 32.sp, fontWeight = FontWeight.Light)
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                when {
-                                    connected -> "Соединение защищено"
-                                    busy -> stateLabel(state)
-                                    state is VpnSessionState.Error -> "Не удалось подключиться"
-                                    else -> "Готов к подключению"
-                                },
-                                color = ContentPrimary,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                if (connected) "Трафик проходит через защищённый туннель" else "Выбери сервер и запусти VPN",
-                                color = Muted,
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(22.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatusMetric("ЯДРО", engineLabel, Modifier.weight(1f))
-                        StatusMetric("СЕРВЕРОВ", serverCount.toString(), Modifier.weight(1f))
-                        StatusMetric("ПОДПИСОК", subscriptionCount.toString(), Modifier.weight(1f))
-                    }
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Время подключения", color = Muted, fontSize = 11.sp)
+                Text(connectionTime, color = ContentPrimary, fontSize = 30.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
+                Spacer(Modifier.height(14.dp))
+                Surface(color = SurfaceRaised, shape = RoundedCornerShape(18.dp)) {
+                    Button(
+                        onClick = { if (connected || busy) onDisconnect() else selected?.let { onConnect(it.id) } },
+                        enabled = selected != null || connected || busy,
+                        modifier = Modifier.padding(11.dp).size(66.dp).semantics {
+                            contentDescription = if (connected || busy) "Отключить VPN" else "Подключить VPN"
+                        },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (connected) Success else Accent,
+                            contentColor = Color.White,
+                            disabledContainerColor = Accent.copy(alpha = .45f),
+                            disabledContentColor = Color.White.copy(alpha = .75f),
+                        ),
+                    ) { PowerIcon(Modifier.size(32.dp)) }
                 }
-            }
-        }
-        item {
-            SectionLabel("МАРШРУТ")
-            Spacer(Modifier.height(8.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-                border = BorderStroke(1.dp, Outline),
-                shape = RoundedCornerShape(20.dp),
-            ) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(42.dp).background(AccentSoft, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
-                        Text(selected?.protocol?.take(1)?.uppercase() ?: "+", color = Accent, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(selected?.name ?: "Сервер не выбран", color = ContentPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            selected?.let { "${it.protocol.uppercase()}  ·  ${it.address}:${it.port}" } ?: "Открой список серверов",
-                            color = Muted,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    ChevronIcon(Modifier.size(28.dp))
-                }
-            }
-        }
-        item {
-            Button(
-                onClick = { if (connected || busy) onDisconnect() else selected?.let { onConnect(it.config) } },
-                enabled = selected != null || connected || busy,
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (connected || busy) SurfaceStrong else Accent,
-                    contentColor = if (connected || busy) Danger else Background,
-                    disabledContainerColor = SurfaceRaised,
-                    disabledContentColor = Muted,
-                ),
-                border = if (connected || busy) BorderStroke(1.dp, Danger.copy(alpha = .4f)) else null,
-            ) {
-                if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Warning, strokeWidth = 2.dp)
-                if (busy) Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     when {
-                        busy -> "ОТМЕНИТЬ"
-                        connected -> "ОТКЛЮЧИТЬ"
-                        else -> "ПОДКЛЮЧИТЬ"
+                        connected -> "Подключено"
+                        busy -> stateLabel(state)
+                        state is VpnSessionState.Error -> "Ошибка подключения"
+                        else -> "Не подключено"
                     },
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    color = stateColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    selected?.name ?: "Выберите сервер",
+                    color = ContentPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    selected?.let { "${it.protocol.uppercase()} · $engineLabel" } ?: "Добавьте подписку, чтобы начать",
+                    color = Muted,
+                    fontSize = 10.sp,
                 )
             }
         }
-        if (state is VpnSessionState.Error) item {
-            Surface(color = Danger.copy(alpha = .1f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Danger.copy(alpha = .3f))) {
-                Text(state.message, color = Danger, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
-            }
-        }
         item {
-            EmbeddedLogConsole(
-                entries = logEntries,
-                onClear = onClearLogs,
-                onExport = onExportLogs,
-            )
-        }
-        item {
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("СЕРВЕРЫ")
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                    Text(if (latencyTesting) "ПРОВЕРКА…" else "ПРОВЕРИТЬ ВСЕ", color = Accent, fontSize = 11.sp)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SurfaceColor,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Outline),
+            ) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(34.dp).background(AccentSoft, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
+                        Text("↻", color = Accent, fontSize = 20.sp)
+                    }
+                    Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+                        Text(activeSubscription?.name ?: "Подписка не выбрана", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("$serverCount серверов · ${subscriptions.size} подписок", color = Muted, fontSize = 10.sp)
+                    }
+                    if (activeSubscription != null) {
+                        TextButton(onClick = { onUpdateSubscription(activeSubscription) }, enabled = !loading) {
+                            Text("ОБНОВИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
+                            Text("ДОБАВИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
+        }
+        item { EmbeddedLogConsole(entries = logEntries, onClear = onClearLogs, onExport = onExportLogs) }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("УЗЛЫ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
+                    Text(if (latencyTesting) "ПРОВЕРКА…" else "ПРОВЕРИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+                TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
+                    Text("+", color = Accent, fontSize = 20.sp)
+                }
+            }
+        }
+        item {
             OutlinedTextField(
                 value = serverQuery,
                 onValueChange = { serverQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Поиск серверов") },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                label = { Text("Поиск узла") },
+                shape = RoundedCornerShape(12.dp),
             )
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SortButton("ПО ИМЕНИ", serverSort == ServerSort.NAME) { serverSort = ServerSort.NAME }
                 SortButton("ПО ЗАДЕРЖКЕ", serverSort == ServerSort.LATENCY) { serverSort = ServerSort.LATENCY }
             }
         }
         if (groups.isEmpty()) item {
             InlineEmptyState(
-                title = if (servers.isEmpty()) "Серверов пока нет" else "Ничего не найдено",
-                text = if (servers.isEmpty()) "Добавь подписку ниже — серверы появятся здесь." else "Измени поисковый запрос.",
+                if (servers.isEmpty()) "Серверов пока нет" else "Ничего не найдено",
+                if (servers.isEmpty()) "Добавьте подписку — узлы появятся здесь." else "Измените поисковый запрос.",
             )
         }
         groups.forEach { group ->
             item(key = "group-${group.id}") {
-                Text(group.name, color = Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(group.name, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             }
             items(group.servers, key = { "server-${it.server.id}" }) { planned ->
-                HomeServerCard(
+                ReferenceServerRow(
                     planned = planned,
                     selected = planned.server.id == selected?.id,
                     onSelect = { onSelect(planned.server) },
@@ -741,30 +718,47 @@ private fun HomeScreen(
                 )
             }
         }
-        item {
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("ПОДПИСКИ")
+        if (subscriptions.isNotEmpty()) item {
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("ПОДПИСКИ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
-                    Text("+ ДОБАВИТЬ", color = Accent, fontSize = 11.sp)
-                }
+                Text("${subscriptions.size}", color = Muted, fontSize = 11.sp)
             }
         }
-        if (subscriptions.isEmpty()) item {
-            InlineEmptyState("Подписок пока нет", "Добавь URL подписки, чтобы загрузить серверы.")
-        } else {
+        if (subscriptions.isNotEmpty()) {
             items(subscriptions, key = { "subscription-${it.id}" }) { subscription ->
                 HomeSubscriptionCard(subscription, loading, onUpdateSubscription, onRemoveSubscription)
             }
         }
-        item { Spacer(Modifier.height(16.dp)) }
+        item { Spacer(Modifier.height(12.dp)) }
     }
     if (showAddSubscription) {
         AddSubscriptionDialog(onDismiss = { showAddSubscription = false }) { name, url ->
             showAddSubscription = false
             onAddSubscription(name, url)
         }
+    }
+}
+
+@Composable
+private fun PowerIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val strokeWidth = 2.8.dp.toPx()
+        drawLine(
+            color = Color.White,
+            start = Offset(center.x, size.height * .08f),
+            end = Offset(center.x, size.height * .48f),
+            strokeWidth = strokeWidth,
+        )
+        drawArc(
+            color = Color.White,
+            startAngle = -42f,
+            sweepAngle = 264f,
+            useCenter = false,
+            topLeft = Offset(size.width * .14f, size.height * .18f),
+            size = androidx.compose.ui.geometry.Size(size.width * .72f, size.height * .72f),
+            style = Stroke(width = strokeWidth),
+        )
     }
 }
 
@@ -821,34 +815,38 @@ private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HomeServerCard(
+private fun ReferenceServerRow(
     planned: PlannedServer,
     selected: Boolean,
     onSelect: () -> Unit,
     onToggleFavorite: () -> Unit,
 ) {
     val server = planned.server
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth().semantics {
             this.selected = selected
             stateDescription = if (selected) "Выбранный сервер" else "Сервер не выбран"
         }.clickable(onClick = onSelect),
-        colors = CardDefaults.cardColors(containerColor = if (selected) AccentSoft else SurfaceColor),
-        border = BorderStroke(1.dp, if (selected) Accent.copy(alpha = .6f) else Outline),
-        shape = RoundedCornerShape(18.dp),
+        color = if (selected) AccentSoft else SurfaceColor,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, if (selected) Accent.copy(alpha = .65f) else Outline),
     ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).background(if (selected) Accent else SurfaceRaised, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                Text(server.protocol.take(1).uppercase(), color = if (selected) Background else Accent, fontWeight = FontWeight.Bold)
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(30.dp).background(if (selected) Accent else SurfaceRaised, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(server.protocol.take(1).uppercase(), color = if (selected) Background else Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(server.name, color = ContentPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${server.protocol.uppercase()} · ${server.address}:${server.port}", color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text(server.name, color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${server.protocol.uppercase()} · ${server.address}:${server.port}", color = Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            planned.latencyMillis?.let { Text("$it мс", color = Success, fontSize = 11.sp) }
-            TextButton(onClick = onToggleFavorite, modifier = Modifier.size(48.dp)) {
-                FavoriteIcon(planned.favorite, Modifier.size(24.dp))
+            planned.latencyMillis?.let { Text("$it мс", color = Success, fontSize = 10.sp) }
+            Box(Modifier.size(34.dp).clickable(onClick = onToggleFavorite), contentAlignment = Alignment.Center) {
+                FavoriteIcon(planned.favorite, Modifier.size(17.dp))
             }
+            if (selected) ChevronIcon(Modifier.size(16.dp))
         }
     }
 }
@@ -1064,7 +1062,7 @@ private fun EmbeddedLogConsole(
                     Text(">_", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
-                    Text("OUTPUT LOG", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("ЛОГИ", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("${entries.size} событий · ${if (expanded) "нажми, чтобы свернуть" else "нажми, чтобы развернуть"}", color = Muted, fontSize = 10.sp)
                 }
                 Text(if (expanded) "⌃" else "⌄", color = Accent, fontSize = 22.sp)
@@ -1437,28 +1435,6 @@ private fun SectionLabel(text: String) {
     Text(text, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
 }
 
-@Composable
-private fun StatusDot(connected: Boolean, busy: Boolean, failed: Boolean = false) {
-    val color = when {
-        connected -> Success
-        busy -> Warning
-        failed -> Danger
-        else -> Muted
-    }
-    Box(Modifier.size(8.dp).background(color, CircleShape))
-}
-
-@Composable
-private fun StatusMetric(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, color = SurfaceColor, shape = RoundedCornerShape(14.dp)) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 11.dp)) {
-            Text(label, color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
-            Spacer(Modifier.height(3.dp))
-            Text(value, color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
 private fun serverCountLabel(count: Int): String {
     val form = when {
         count % 100 in 11..14 -> "серверов"
@@ -1467,6 +1443,14 @@ private fun serverCountLabel(count: Int): String {
         else -> "серверов"
     }
     return "$count $form · проверка TCP-соединения"
+}
+
+private fun formatDuration(durationMillis: Long): String {
+    val totalSeconds = durationMillis / 1_000L
+    val hours = totalSeconds / 3_600L
+    val minutes = totalSeconds % 3_600L / 60L
+    val seconds = totalSeconds % 60L
+    return "%02d:%02d:%02d".format(hours, minutes, seconds)
 }
 
 private fun engineName(engine: EngineKind): String = when (engine) {
