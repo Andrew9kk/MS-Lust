@@ -19,6 +19,14 @@ trap cleanup EXIT
 
 fail() {
   printf 'VPN_SMOKE_FAIL: %s\n' "$*" >&2
+  snapshot >/dev/null 2>&1 || true
+  printf '%s\n' '--- UI hierarchy ---' >&2
+  sed -n '1,120p' "$TMP_DIR/ui.xml" >&2 2>/dev/null || true
+  printf '%s\n' '--- foreground activity ---' >&2
+  "$ADB" shell dumpsys window windows 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' >&2 || true
+  "$ADB" shell dumpsys activity activities 2>/dev/null | grep -E 'topResumedActivity|mResumedActivity' >&2 || true
+  printf '%s\n' '--- application logcat ---' >&2
+  "$ADB" logcat -d -t 300 2>/dev/null | grep -E "${PACKAGE}|AndroidRuntime|ActivityTaskManager|WindowManager" >&2 || true
   exit 1
 }
 
@@ -46,6 +54,25 @@ wait_for_text() {
     sleep 1
   done
   fail "UI did not reach: $expected"
+}
+
+start_app() {
+  "$ADB" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+  "$ADB" shell wm dismiss-keyguard >/dev/null 2>&1 || true
+  for attempt in 1 2 3; do
+    "$ADB" shell am force-stop "$PACKAGE"
+    if "$ADB" shell am start -W -n "$PACKAGE/.MainActivity"; then
+      for _ in 1 2 3 4 5; do
+        if "$ADB" shell dumpsys activity activities 2>/dev/null | grep -Eq "(topResumedActivity|mResumedActivity).*$PACKAGE"; then
+          return 0
+        fi
+        sleep 1
+      done
+    fi
+    echo "Activity start attempt $attempt did not reach foreground" >&2
+    sleep $((attempt * 2))
+  done
+  fail "MainActivity did not reach foreground"
 }
 
 click_text() {
@@ -98,7 +125,7 @@ if [[ "${SKIP_APK_INSTALL:-0}" != "1" ]]; then
 fi
 "$ADB" logcat -c
 "$ADB" shell am force-stop "$PACKAGE"
-"$ADB" shell am start -W -n "$PACKAGE/.MainActivity" >/dev/null
+start_app
 wait_for_text "ПОДКЛЮЧИТЬ"
 
 expected_engine="${EXPECT_ENGINE:-XRAY}"
@@ -138,7 +165,7 @@ for cycle in 1 2; do
 
   click_text "ОТКЛЮЧИТЬ"
   wait_for_no_tun
-  "$ADB" shell am start -W -n "$PACKAGE/.MainActivity" >/dev/null
+  start_app
   wait_for_text "ПОДКЛЮЧИТЬ"
   if [[ "${EXPECT_ENGINE:-XRAY}" == "SING_BOX" ]] && "$ADB" shell pidof libsingbox.so >/dev/null 2>&1; then
     fail "sing-box subprocess remained after disconnect in cycle $cycle"
