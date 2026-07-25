@@ -603,7 +603,7 @@ private fun HomeScreen(
                 Spacer(Modifier.height(14.dp))
                 Surface(color = SurfaceRaised, shape = RoundedCornerShape(18.dp)) {
                     Button(
-                        onClick = { if (connected || busy) onDisconnect() else selected?.let { onConnect(it.id) } },
+                        onClick = { if (connected || busy) onDisconnect() else selected?.let { onConnect(it.config) } },
                         enabled = selected != null || connected || busy,
                         modifier = Modifier.padding(11.dp).size(66.dp).semantics {
                             contentDescription = if (connected || busy) "Отключить VPN" else "Подключить VPN"

@@ -35,25 +35,28 @@ snapshot() {
   "$ADB" pull /sdcard/lust-smoke-ui.xml "$TMP_DIR/ui.xml" >/dev/null
 }
 
-has_text() {
+has_ui_label() {
   snapshot
   python3 - "$TMP_DIR/ui.xml" "$1" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 path, expected = sys.argv[1:]
-found = any(node.attrib.get("text") == expected for node in ET.parse(path).getroot().iter("node"))
+found = any(
+    node.attrib.get("text") == expected or node.attrib.get("content-desc") == expected
+    for node in ET.parse(path).getroot().iter("node")
+)
 raise SystemExit(0 if found else 1)
 PY
 }
 
-wait_for_text() {
+wait_for_ui_label() {
   local expected="$1"
   local attempts="${2:-20}"
   for _ in $(seq 1 "$attempts"); do
-    if has_text "$expected"; then return 0; fi
+    if has_ui_label "$expected"; then return 0; fi
     sleep 1
   done
-  fail "UI did not reach: $expected"
+  fail "UI did not reach label: $expected"
 }
 
 start_app() {
@@ -75,7 +78,7 @@ start_app() {
   fail "MainActivity did not reach foreground"
 }
 
-click_text() {
+click_ui_label() {
   local expected="$1"
   snapshot
   local point
@@ -85,7 +88,7 @@ import sys
 import xml.etree.ElementTree as ET
 path, expected = sys.argv[1:]
 for node in ET.parse(path).getroot().iter("node"):
-    if node.attrib.get("text") == expected:
+    if node.attrib.get("text") == expected or node.attrib.get("content-desc") == expected:
         x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.attrib["bounds"]))
         print((x1 + x2) // 2, (y1 + y2) // 2)
         break
@@ -93,7 +96,7 @@ else:
     raise SystemExit(1)
 PY
 )" || fail "UI action not found: $expected"
-  # The Compose semantics node itself is not clickable, but its center is inside the button.
+  # A merged Compose semantics node may not be clickable itself, but its center is inside the button.
   "$ADB" shell input tap $point
 }
 
@@ -126,7 +129,7 @@ fi
 "$ADB" logcat -c
 "$ADB" shell am force-stop "$PACKAGE"
 start_app
-wait_for_text "ПОДКЛЮЧИТЬ"
+wait_for_ui_label "Подключить VPN"
 
 expected_engine="${EXPECT_ENGINE:-XRAY}"
 settings_xml="$("$ADB" exec-out run-as "$PACKAGE" cat shared_prefs/vpn_settings.xml 2>/dev/null || true)"
@@ -135,8 +138,8 @@ configured_engine="${configured_engine:-XRAY}"
 [[ "$configured_engine" == "$expected_engine" ]] || fail "configured engine is $configured_engine, expected $expected_engine"
 
 for cycle in 1 2; do
-  click_text "ПОДКЛЮЧИТЬ"
-  wait_for_text "Соединение защищено"
+  click_ui_label "Подключить VPN"
+  wait_for_ui_label "Подключено"
   wait_for_vpn
 
   runtime_log="$("$ADB" exec-out run-as "$PACKAGE" cat files/logs/lust.log 2>/dev/null || true)"
@@ -163,10 +166,10 @@ for cycle in 1 2; do
     $dns_ok || fail "DNS resolution failed in cycle $cycle"
   fi
 
-  click_text "ОТКЛЮЧИТЬ"
+  click_ui_label "Отключить VPN"
   wait_for_no_tun
   start_app
-  wait_for_text "ПОДКЛЮЧИТЬ"
+  wait_for_ui_label "Подключить VPN"
   if [[ "${EXPECT_ENGINE:-XRAY}" == "SING_BOX" ]] && "$ADB" shell pidof libsingbox.so >/dev/null 2>&1; then
     fail "sing-box subprocess remained after disconnect in cycle $cycle"
   fi
