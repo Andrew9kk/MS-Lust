@@ -18,12 +18,14 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,6 +55,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +83,6 @@ import com.envy.dualcorevpn.core.VpnSessionState
 import com.envy.dualcorevpn.core.VpnSessionStore
 import com.envy.dualcorevpn.logging.AppLog
 import com.envy.dualcorevpn.logging.LogEntry
-import com.envy.dualcorevpn.logging.LogFilter
 import com.envy.dualcorevpn.logging.LogLevel
 import com.envy.dualcorevpn.server.ServerLatencyResult
 import com.envy.dualcorevpn.server.ServerLatencyTester
@@ -369,7 +371,6 @@ private fun LustTheme(content: @Composable () -> Unit) {
 
 private enum class AppTab(val title: String) {
     HOME("Главная"),
-    LOGS("Журнал"),
     SETTINGS("Настройки"),
 }
 
@@ -394,12 +395,6 @@ private fun AppTabIcon(tab: AppTab, selected: Boolean) {
                     lineTo(size.width * .76f, size.height * .42f)
                 }
                 drawPath(body, color, style = line)
-            }
-            AppTab.LOGS -> {
-                drawRect(color, topLeft = Offset(size.width * .2f, size.height * .12f), size = size.copy(width = size.width * .6f, height = size.height * .76f), style = line)
-                for (y in listOf(.34f, .5f, .66f)) {
-                    drawLine(color, Offset(size.width * .32f, size.height * y), Offset(size.width * .68f, size.height * y), stroke)
-                }
             }
             AppTab.SETTINGS -> {
                 drawCircle(color, radius = size.minDimension * .24f, center = center, style = line)
@@ -467,8 +462,10 @@ private fun LustApp(
                     onAddSubscription = onAddSubscription,
                     onUpdateSubscription = onUpdateSubscription,
                     onRemoveSubscription = onRemoveSubscription,
+                    logEntries = logEntries,
+                    onClearLogs = AppLog::clear,
+                    onExportLogs = onExportLogs,
                 )
-                AppTab.LOGS -> LogsScreen(logEntries, onClear = AppLog::clear, onExport = onExportLogs)
                 AppTab.SETTINGS -> SettingsScreen(vpnSettings, onSaveVpnSettings, onExportBackup, onImportBackup)
             }
             if (loading) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .62f)), contentAlignment = Alignment.Center) {
@@ -537,6 +534,9 @@ private fun HomeScreen(
     onAddSubscription: (String, String) -> Unit,
     onUpdateSubscription: (Subscription) -> Unit,
     onRemoveSubscription: (Subscription) -> Unit,
+    logEntries: List<LogEntry>,
+    onClearLogs: () -> Unit,
+    onExportLogs: () -> Unit,
 ) {
     var serverQuery by remember { mutableStateOf("") }
     var serverSort by remember { mutableStateOf(ServerSort.NAME) }
@@ -692,6 +692,13 @@ private fun HomeScreen(
             Surface(color = Danger.copy(alpha = .1f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Danger.copy(alpha = .3f))) {
                 Text(state.message, color = Danger, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
             }
+        }
+        item {
+            EmbeddedLogConsole(
+                entries = logEntries,
+                onClear = onClearLogs,
+                onExport = onExportLogs,
+            )
         }
         item {
             Spacer(Modifier.height(6.dp))
@@ -1035,58 +1042,50 @@ private fun AddSubscriptionDialog(
 }
 
 @Composable
-private fun LogsScreen(entries: List<LogEntry>, onClear: () -> Unit, onExport: () -> Unit) {
-    var minimumLevel by remember { mutableStateOf(LogLevel.DEBUG) }
-    var query by remember { mutableStateOf("") }
-    var source by remember { mutableStateOf("") }
-    val levels = LogLevel.entries
-    val visible = LogFilter.apply(entries, minimumLevel, source, query).asReversed()
-    Column(Modifier.fillMaxSize().padding(20.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            ScreenTitle("Журнал", "${visible.size} из ${entries.size} событий", Modifier.weight(1f))
-            TextButton(onClick = onExport, enabled = entries.isNotEmpty()) { Text("ЭКСПОРТ", color = Accent) }
-            TextButton(onClick = onClear, enabled = entries.isNotEmpty()) { Text("ОЧИСТИТЬ", color = Danger) }
-        }
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Поиск по сообщению") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = source,
-            onValueChange = { source = it },
-            label = { Text("Источник: VPN, Xray, HEV, UI") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            levels.forEach { level ->
-                val selected = minimumLevel == level
-                TextButton(
-                    onClick = { minimumLevel = level },
-                    modifier = Modifier.background(
-                        if (selected) SurfaceRaised else Color.Transparent,
-                        RoundedCornerShape(10.dp),
-                    ),
-                ) { Text(level.name, color = if (selected) Accent else Muted, fontSize = 11.sp) }
+private fun EmbeddedLogConsole(
+    entries: List<LogEntry>,
+    onClear: () -> Unit,
+    onExport: () -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val recent = entries.takeLast(3).asReversed()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF090D12)),
+        border = BorderStroke(1.dp, Outline),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(34.dp).background(AccentSoft, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                    Text(">_", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                }
+                Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+                    Text("OUTPUT LOG", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("${entries.size} событий · ${if (expanded) "нажми, чтобы свернуть" else "нажми, чтобы развернуть"}", color = Muted, fontSize = 10.sp)
+                }
+                Text(if (expanded) "⌃" else "⌄", color = Accent, fontSize = 22.sp)
             }
-        }
-        Spacer(Modifier.height(8.dp))
-        if (visible.isEmpty()) {
-            EmptyState("События не найдены", "Измени уровень, источник или поисковый запрос.", "СБРОСИТЬ ФИЛЬТРЫ") {
-                minimumLevel = LogLevel.DEBUG
-                query = ""
-                source = ""
-            }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(visible, key = { "${it.timestampMillis}:${it.source}:${it.message.hashCode()}" }) { entry ->
-                    LogEntryCard(entry)
+            if (expanded) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Outline))
+                if (recent.isEmpty()) {
+                    Text(
+                        "Журнал пуст. События подключения появятся здесь.",
+                        color = Muted,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                } else {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        recent.forEach { entry -> CompactLogLine(entry) }
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onExport, enabled = entries.isNotEmpty()) { Text("ЭКСПОРТ", color = if (entries.isNotEmpty()) Accent else Muted, fontSize = 10.sp) }
+                    TextButton(onClick = onClear, enabled = entries.isNotEmpty()) { Text("ОЧИСТИТЬ", color = if (entries.isNotEmpty()) Danger else Muted, fontSize = 10.sp) }
                 }
             }
         }
@@ -1094,34 +1093,33 @@ private fun LogsScreen(entries: List<LogEntry>, onClear: () -> Unit, onExport: (
 }
 
 @Composable
-private fun LogEntryCard(entry: LogEntry) {
-    val levelColor = when (entry.level) {
+private fun CompactLogLine(entry: LogEntry) {
+    val color = when (entry.level) {
         LogLevel.DEBUG -> Muted
         LogLevel.INFO -> Accent
-        LogLevel.WARN -> Color(0xFFFFC66D)
+        LogLevel.WARN -> Warning
         LogLevel.ERROR -> Danger
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-        border = BorderStroke(1.dp, Outline),
-        shape = RoundedCornerShape(14.dp),
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(entry.level.name, color = levelColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                Text("  ${entry.source}", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                Text(
-                    java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date(entry.timestampMillis)),
-                    color = Muted,
-                    fontSize = 10.sp,
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(entry.message, fontSize = 12.sp, lineHeight = 17.sp)
-        }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(
+            java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(entry.timestampMillis)),
+            color = Muted,
+            fontSize = 10.sp,
+        )
+        Text("  ${entry.level.name.take(1)}", color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
+        Text(
+            "  ${entry.source}: ${entry.message}",
+            color = if (entry.level == LogLevel.ERROR) Danger else ContentPrimary.copy(alpha = .86f),
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
+
+private enum class SettingsPage { ROOT, TRAFFIC }
 
 @Composable
 private fun SettingsScreen(
@@ -1129,6 +1127,110 @@ private fun SettingsScreen(
     onSave: (VpnSettings) -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
+) {
+    var page by rememberSaveable { mutableStateOf(SettingsPage.ROOT) }
+    when (page) {
+        SettingsPage.ROOT -> SettingsRoot(
+            settings = settings,
+            onOpenTraffic = { page = SettingsPage.TRAFFIC },
+            onExportBackup = onExportBackup,
+            onImportBackup = onImportBackup,
+        )
+        SettingsPage.TRAFFIC -> VpnSettingsDetails(
+            settings = settings,
+            onSave = onSave,
+            onBack = { page = SettingsPage.ROOT },
+        )
+    }
+}
+
+@Composable
+private fun SettingsRoot(
+    settings: VpnSettings,
+    onOpenTraffic: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item { Spacer(Modifier.height(18.dp)); ScreenTitle("Настройки", "Управление приложением и VPN") }
+        item { SettingsSectionTitle("VPN И ТРАФИК") }
+        item {
+            SettingsNavigationCard(
+                title = "Настройки трафика",
+                description = "DNS, MTU, IPv6 и правила маршрутизации",
+                value = routingModeLabel(settings.routingMode),
+                onClick = onOpenTraffic,
+            )
+        }
+        item { SettingsSectionTitle("НАСТРОЙКИ ЯДРА") }
+        item {
+            SettingsNavigationCard(
+                title = "VPN-ядро",
+                description = "Активное ядро для следующего подключения",
+                value = engineName(settings.engine),
+                onClick = onOpenTraffic,
+            )
+        }
+        item { SettingsSectionTitle("СЛУЖЕБНОЕ") }
+        item {
+            SettingsNavigationCard(
+                title = "Резервирование настроек",
+                description = "Экспорт подписок, серверов и VPN-настроек",
+                value = "ЭКСПОРТ",
+                onClick = onExportBackup,
+            )
+        }
+        item {
+            SettingsNavigationCard(
+                title = "Восстановление настроек",
+                description = "Импорт ранее созданной резервной копии",
+                value = "ИМПОРТ",
+                onClick = onImportBackup,
+            )
+        }
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+@Composable
+private fun SettingsNavigationCard(
+    title: String,
+    description: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+        border = BorderStroke(1.dp, Outline),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = ContentPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+                Text(description, color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            Text(value, color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
+            Text("  ›", color = Muted, fontSize = 22.sp)
+        }
+    }
+}
+
+private fun routingModeLabel(mode: RoutingMode): String = when (mode) {
+    RoutingMode.ALL -> "ВСЁ ЧЕРЕЗ VPN"
+    RoutingMode.BYPASS_LAN -> "ОБХОД LAN"
+    RoutingMode.CUSTOM -> "СВОИ ПРАВИЛА"
+}
+
+@Composable
+private fun VpnSettingsDetails(
+    settings: VpnSettings,
+    onSave: (VpnSettings) -> Unit,
+    onBack: () -> Unit,
 ) {
     var mtu by remember(settings) { mutableStateOf(settings.mtu.toString()) }
     var dnsServer by remember(settings) { mutableStateOf(settings.dnsServer) }
@@ -1143,7 +1245,24 @@ private fun SettingsScreen(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { ScreenTitle("Настройки", "Маршрутизация без лишней сложности") }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(48.dp),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text("‹", color = Accent, fontSize = 32.sp, lineHeight = 32.sp, modifier = Modifier.offset(y = (-6).dp))
+                }
+                Column(Modifier.weight(1f).padding(start = 4.dp)) {
+                    Text("Настройки трафика", color = ContentPrimary, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+                    Text("DNS, маршрутизация и VPN-интерфейс", color = Muted, fontSize = 11.sp)
+                }
+            }
+        }
         item { SettingsSectionTitle("КАК НАПРАВЛЯТЬ ТРАФИК") }
         item {
             Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1237,21 +1356,6 @@ private fun SettingsScreen(
             ) { Text("СОХРАНИТЬ") }
         }
         if (showAdvanced) {
-        item { SettingsSectionTitle("РЕЗЕРВНАЯ КОПИЯ") }
-        item {
-            Text(
-                "Копия содержит ссылки подписок и может содержать access token. Храни файл в безопасном месте.",
-                color = Warning,
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-            )
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onExportBackup, modifier = Modifier.weight(1f).height(50.dp)) { Text("ЭКСПОРТ") }
-                OutlinedButton(onClick = onImportBackup, modifier = Modifier.weight(1f).height(50.dp)) { Text("ИМПОРТ") }
-            }
-        }
         item { SettingsSectionTitle("ТРАНСПОРТ И ДИАГНОСТИКА") }
         item { SettingsCard("HEV tun2socks", "Android TUN → HEV → SOCKS 127.0.0.1:10808 → ${if (engine == EngineKind.XRAY) "Xray" else "sing-box"}", "ВКЛЮЧЕНО") }
         item { SettingsCard("Постоянный журнал", "Core/service stack trace, поиск, фильтры, экспорт, ротация 2 МБ", "ВКЛЮЧЕНО") }
