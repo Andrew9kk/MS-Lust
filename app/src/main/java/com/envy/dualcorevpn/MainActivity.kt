@@ -674,7 +674,7 @@ private fun HomeScreen(
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
                         Text(activeSubscription?.name ?: "No Subscription", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text("$serverCount серверов · ${subscriptions.size} подписок", color = Muted, fontSize = 10.sp)
+                        Text("$serverCount Servers · ${subscriptions.size} Subscriptions", color = Muted, fontSize = 10.sp)
                     }
                     if (activeSubscription != null) {
                         TextButton(onClick = { onUpdateSubscription(activeSubscription) }, enabled = !loading) {
@@ -691,10 +691,10 @@ private fun HomeScreen(
         item { EmbeddedLogConsole(entries = logEntries, onClear = onClearLogs, onExport = onExportLogs) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("УЗЛЫ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("LOGS", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                    Text(if (latencyTesting) "ПРОВЕРКА…" else "ПРОВЕРИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(if (latencyTesting) "Checking…" else "CHECK", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
                 TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
                     Text("+", color = Accent, fontSize = 20.sp)
@@ -707,18 +707,18 @@ private fun HomeScreen(
                 onValueChange = { serverQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Поиск узла") },
+                label = { Text("Search Server") },
                 shape = RoundedCornerShape(12.dp),
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SortButton("ПО ИМЕНИ", serverSort == ServerSort.NAME) { serverSort = ServerSort.NAME }
-                SortButton("ПО ЗАДЕРЖКЕ", serverSort == ServerSort.LATENCY) { serverSort = ServerSort.LATENCY }
+                SortButton("NAME", serverSort == ServerSort.NAME) { serverSort = ServerSort.NAME }
+                SortButton("LATENCY", serverSort == ServerSort.LATENCY) { serverSort = ServerSort.LATENCY }
             }
         }
         if (groups.isEmpty()) item {
             InlineEmptyState(
-                if (servers.isEmpty()) "Серверов пока нет" else "Ничего не найдено",
-                if (servers.isEmpty()) "Добавьте подписку — узлы появятся здесь." else "Измените поисковый запрос.",
+                if (servers.isEmpty()) "No Servers Available" else "No Results Found",
+                if (servers.isEmpty()) "Add a subscription to display servers here." else "Try a different search.",
             )
         }
         groups.forEach { group ->
@@ -736,7 +736,7 @@ private fun HomeScreen(
         }
         if (subscriptions.isNotEmpty()) item {
             Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("ПОДПИСКИ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("SUBSCRIPTIONS", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text("${subscriptions.size}", color = Muted, fontSize = 11.sp)
             }
