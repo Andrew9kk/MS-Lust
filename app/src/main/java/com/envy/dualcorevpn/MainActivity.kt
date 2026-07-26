@@ -200,14 +200,18 @@ class MainActivity : ComponentActivity() {
         AppLog.info("UI", "Application opened")
         if (repository.subscriptions().isEmpty()) {
     lifecycleScope.launch {
-        runCatching {
+    runCatching {
+        withContext(Dispatchers.IO) {
             repository.addAndUpdate(
                 "TRENZYCH VPN",
                 "https://sub.channelmyanmar.site/free?token=f01a1a01free"
             )
-        }.onSuccess {
-            reloadUi++
         }
+    }.onSuccess {
+        reloadUi++
+    }.onFailure {
+        AppLog.error("SUBSCRIPTION", "Auto import failed", it)
+    }
     }
         }
         handleSubscriptionIntent(intent)
