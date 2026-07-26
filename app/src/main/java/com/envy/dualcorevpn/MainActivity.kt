@@ -614,7 +614,7 @@ private fun HomeScreen(
         }
         item {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Время подключения", color = Muted, fontSize = 11.sp)
+                Text("Connection Time", color = Muted, fontSize = 11.sp)
                 Text(connectionTime, color = ContentPrimary, fontSize = 30.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
                 Spacer(Modifier.height(14.dp))
                 Surface(color = SurfaceRaised, shape = RoundedCornerShape(18.dp)) {
@@ -622,7 +622,7 @@ private fun HomeScreen(
                         onClick = { if (connected || busy) onDisconnect() else selected?.let { onConnect(it.config) } },
                         enabled = selected != null || connected || busy,
                         modifier = Modifier.padding(11.dp).size(66.dp).semantics {
-                            contentDescription = if (connected || busy) "Отключить VPN" else "Подключить VPN"
+                            contentDescription = if (connected || busy) "Disconnect VPN" else "Connect VPN"
                         },
                         shape = CircleShape,
                         contentPadding = PaddingValues(0.dp),
@@ -637,17 +637,17 @@ private fun HomeScreen(
                 Spacer(Modifier.height(12.dp))
                 Text(
                     when {
-                        connected -> "Подключено"
+                        connected -> "Connected"
                         busy -> stateLabel(state)
-                        state is VpnSessionState.Error -> "Ошибка подключения"
-                        else -> "Не подключено"
+                        state is VpnSessionState.Error -> "Connection Error"
+                        else -> "Disconnected"
                     },
                     color = stateColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    selected?.name ?: "Выберите сервер",
+                    selected?.name ?: "Select Server",
                     color = ContentPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -655,7 +655,7 @@ private fun HomeScreen(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    selected?.let { "${it.protocol.uppercase()} · $engineLabel" } ?: "Добавьте подписку, чтобы начать",
+                    selected?.let { "${it.protocol.uppercase()} · $engineLabel" } ?: "Add a subscription to get started",
                     color = Muted,
                     fontSize = 10.sp,
                 )
@@ -673,16 +673,16 @@ private fun HomeScreen(
                         Text("↻", color = Accent, fontSize = 20.sp)
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
-                        Text(activeSubscription?.name ?: "Подписка не выбрана", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(activeSubscription?.name ?: "No Subscription", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Text("$serverCount серверов · ${subscriptions.size} подписок", color = Muted, fontSize = 10.sp)
                     }
                     if (activeSubscription != null) {
                         TextButton(onClick = { onUpdateSubscription(activeSubscription) }, enabled = !loading) {
-                            Text("ОБНОВИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("UPDATE", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
-                            Text("ДОБАВИТЬ", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("ADD", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
