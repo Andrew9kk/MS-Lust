@@ -93,12 +93,7 @@ internal class NativeSingBoxGateway(
     }
 
     private fun requireSocksPortAvailable() {
-        runCatching {
-            ServerSocket().use { socket ->
-                socket.reuseAddress = false
-                socket.bind(InetSocketAddress("127.0.0.1", SingBoxConfigConverter.SOCKS_PORT))
-            }
-        }.getOrElse {
+        if (!isLocalPortAvailable(SingBoxConfigConverter.SOCKS_PORT)) {
             error("SOCKS 127.0.0.1:${SingBoxConfigConverter.SOCKS_PORT} is already in use")
         }
     }
@@ -153,3 +148,10 @@ internal class NativeSingBoxGateway(
         }
     }
 }
+
+internal fun isLocalPortAvailable(port: Int): Boolean = runCatching {
+    ServerSocket().use { socket ->
+        socket.reuseAddress = true
+        socket.bind(InetSocketAddress("127.0.0.1", port))
+    }
+}.isSuccess
