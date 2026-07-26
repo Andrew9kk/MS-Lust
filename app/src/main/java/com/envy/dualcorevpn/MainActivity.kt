@@ -1031,36 +1031,81 @@ private fun AddSubscriptionDialog(
     var clipboardError by remember { mutableStateOf(false) }
     val context = LocalContext.current
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Subscription") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name (Optional)") }, singleLine = true)
-                OutlinedTextField(value = url, onValueChange = { url = it.trim(); clipboardError = false }, label = { Text("Subscription URL") }, placeholder = { Text("https://…") }, singleLine = true)
-                OutlinedButton(onClick = {
+    onDismissRequest = onDismiss,
+    title = { Text("New Subscription") },
+    text = {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name (Optional)") },
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = url,
+                onValueChange = {
+                    url = it.trim()
+                    clipboardError = false
+                },
+                label = { Text("Subscription URL") },
+                placeholder = { Text("https://…") },
+                singleLine = true
+            )
+
+            OutlinedButton(
+                onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = clipboard.primaryClip
-                    val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
+                    val text = clip?.takeIf { it.itemCount > 0 }
+                        ?.getItemAt(0)
+                        ?.coerceToText(context)
+
                     val request = SubscriptionClipboard.parse(text)
-                    if (request == null) clipboardError = true else {
+
+                    if (request == null) {
+                        clipboardError = true
+                    } else {
                         url = request.url
-                        if (name.isBlank()) name = request.name
+                        if (name.isBlank()) {
+                            name = request.name
+                        }
                         clipboardError = false
                     }
-                }, modifier = Modifier.fillMaxWidth()) {
-                    Text("PASTE FROM CLIPBOARD")
-                }
-                if (clipboardError) {
-    Text(
-        text = "No subscription URL found in clipboard",
-        color = Danger,
-        fontSize = 12.sp,
-    )
-                }
-        },
-        confirmButton = { Button(onClick = { onAdd(name.trim(), url.trim()) }, enabled = url.startsWith("https://") || url.startsWith("http://")) { Text("ДОБАВИТЬ") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
-    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("PASTE FROM CLIPBOARD")
+            }
+
+            if (clipboardError) {
+                Text(
+                    text = "No subscription URL found in clipboard",
+                    color = Danger,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    },
+
+    confirmButton = {
+        Button(
+            onClick = {
+                onAdd(name.trim(), url.trim())
+            },
+            enabled = url.startsWith("https://") || url.startsWith("http://")
+        ) {
+            Text("ADD")
+        }
+    },
+
+    dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("CANCEL")
+        }
+    }
+)
 }
 
 @Composable
