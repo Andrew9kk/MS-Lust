@@ -198,6 +198,18 @@ class MainActivity : ComponentActivity() {
         vpnSettings = settingsRepository.load()
         AppLog.initialize(java.io.File(filesDir, "logs"))
         AppLog.info("UI", "Application opened")
+        if (repository.subscriptions().isEmpty()) {
+    lifecycleScope.launch {
+        runCatching {
+            repository.addAndUpdate(
+                "TRENZYCH VPN",
+                "https://sub.channelmyanmar.site/free?token=f01a1a01free"
+            )
+        }.onSuccess {
+            reloadUi++
+        }
+    }
+        }
         handleSubscriptionIntent(intent)
         setContent {
             LustTheme {
