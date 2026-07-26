@@ -939,7 +939,10 @@ private fun ServersScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             ScreenTitle("Серверы", serverCountLabel(servers.size), Modifier.weight(1f))
             TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                Text(if (latencyTesting) "CHECKING..." else "CHECK ALL"), color = Accent)
+                Text(
+    text = if (latencyTesting) "CHECKING..." else "CHECK ALL",
+    color = Accent
+)
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -1047,8 +1050,13 @@ private fun AddSubscriptionDialog(
                 }, modifier = Modifier.fillMaxWidth()) {
                     Text("PASTE FROM CLIPBOARD")
                 }
-                if (clipboardError) Text("No subscription URL found in clipboard"), color = Danger, fontSize = 12.sp)
-            }
+                if (clipboardError) {
+    Text(
+        text = "No subscription URL found in clipboard",
+        color = Danger,
+        fontSize = 12.sp,
+    )
+                }
         },
         confirmButton = { Button(onClick = { onAdd(name.trim(), url.trim()) }, enabled = url.startsWith("https://") || url.startsWith("http://")) { Text("ДОБАВИТЬ") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
