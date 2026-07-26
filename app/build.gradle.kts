@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.trenzych.vpn"
+    namespace = "com.envy.dualcorevpn"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.trenzych.vpn"
+        applicationId = "com.envy.dualcorevpn"
         minSdk = 26
         targetSdk = 34
         versionCode = 9
