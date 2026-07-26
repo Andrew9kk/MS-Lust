@@ -691,10 +691,10 @@ private fun HomeScreen(
         item { EmbeddedLogConsole(entries = logEntries, onClear = onClearLogs, onExport = onExportLogs) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("LOGS", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("SERVER LIST", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                    Text(if (latencyTesting) "Checking…" else "CHECK", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(if (latencyTesting) "Checking…" else "PING", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
                 TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
                     Text("+", color = Accent, fontSize = 20.sp)
@@ -1169,39 +1169,39 @@ private fun SettingsRoot(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { Spacer(Modifier.height(18.dp)); ScreenTitle("Настройки", "Управление приложением и VPN") }
+        item { Spacer(Modifier.height(18.dp)); ScreenTitle("Settings", "Manage the app and VPN") }
         item { SettingsSectionTitle("VPN И ТРАФИК") }
         item {
             SettingsNavigationCard(
-                title = "Настройки трафика",
-                description = "DNS, MTU, IPv6 и правила маршрутизации",
+                title = "Traffic Settings",
+                description = "DNS, MTU, IPv6 and routing rules",
                 value = routingModeLabel(settings.routingMode),
                 onClick = onOpenTraffic,
             )
         }
-        item { SettingsSectionTitle("НАСТРОЙКИ ЯДРА") }
+        item { SettingsSectionTitle("CORE SETTINGS") }
         item {
             SettingsNavigationCard(
-                title = "VPN-ядро",
-                description = "Активное ядро для следующего подключения",
+                title = "VPN Engine",
+                description = "Engine used for the next connection",
                 value = engineName(settings.engine),
                 onClick = onOpenTraffic,
             )
         }
-        item { SettingsSectionTitle("СЛУЖЕБНОЕ") }
+        item { SettingsSectionTitle("BACKUP & RESTORE") }
         item {
             SettingsNavigationCard(
-                title = "Резервирование настроек",
-                description = "Экспорт подписок, серверов и VPN-настроек",
-                value = "ЭКСПОРТ",
+                title = "Backup Settings",
+                description = "Export subscriptions, servers and VPN settings",
+                value = "EXPORT",
                 onClick = onExportBackup,
             )
         }
         item {
             SettingsNavigationCard(
-                title = "Восстановление настроек",
-                description = "Импорт ранее созданной резервной копии",
-                value = "ИМПОРТ",
+                title = "Restore Settings",
+                description = "Import a previously created backup",
+                value = "IMPORT",
                 onClick = onImportBackup,
             )
         }
@@ -1272,17 +1272,17 @@ private fun VpnSettingsDetails(
                     Text("‹", color = Accent, fontSize = 32.sp, lineHeight = 32.sp, modifier = Modifier.offset(y = (-6).dp))
                 }
                 Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                    Text("Настройки трафика", color = ContentPrimary, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
-                    Text("DNS, маршрутизация и VPN-интерфейс", color = Muted, fontSize = 11.sp)
+                    Text("Traffic Settings", color = ContentPrimary, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+                    Text("DNS, Routing and VPN Interface", color = Muted, fontSize = 11.sp)
                 }
             }
         }
-        item { SettingsSectionTitle("КАК НАПРАВЛЯТЬ ТРАФИК") }
+        item { SettingsSectionTitle("TRAFFIC ROUTING") }
         item {
             Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SettingsCard("Всё через VPN", "Все сайты и приложения используют выбранный сервер", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, selectionControl = true, onClick = { routingMode = RoutingMode.ALL })
-                SettingsCard("Обход локальной сети", "Роутер и домашние устройства открываются напрямую", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, selectionControl = true, onClick = { routingMode = RoutingMode.BYPASS_LAN })
-                SettingsCard("Свои исключения", "Указанные домены и IP идут напрямую", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, selectionControl = true, onClick = { routingMode = RoutingMode.CUSTOM })
+                SettingsCard("Route All Traffic", "All websites and apps use the selected VPN server", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, selectionControl = true, onClick = { routingMode = RoutingMode.ALL })
+                SettingsCard("Bypass Local Network", "Access your router and local devices directly", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, selectionControl = true, onClick = { routingMode = RoutingMode.BYPASS_LAN })
+                SettingsCard("Сustom Rules", "Specified domains and IPs bypass the VPN", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, selectionControl = true, onClick = { routingMode = RoutingMode.CUSTOM })
             }
         }
         if (routingMode == RoutingMode.CUSTOM) {
@@ -1290,7 +1290,7 @@ private fun VpnSettingsDetails(
                 OutlinedTextField(
                     value = routingRules,
                     onValueChange = { routingRules = it.take(4096) },
-                    label = { Text("Домены и IP — по одному на строке") },
+                    label = { Text("Domains and IPs — one per line") },
                     placeholder = { Text("example.com\n192.168.50.0/24") },
                     minLines = 4,
                     modifier = Modifier.fillMaxWidth(),
@@ -1299,16 +1299,16 @@ private fun VpnSettingsDetails(
         }
         item {
             OutlinedButton(onClick = { showAdvanced = !showAdvanced }, modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                Text(if (showAdvanced) "СКРЫТЬ РАСШИРЕННЫЕ" else "РАСШИРЕННЫЕ НАСТРОЙКИ")
+                Text(if (showAdvanced) "HIDE ADVANCED" else "ADVANCED SETTINGS")
             }
         }
         if (showAdvanced) {
-        item { SettingsSectionTitle("ЯДРО") }
+        item { SettingsSectionTitle("VPN ENGINE") }
         item {
             SettingsCard(
                 "Xray-core",
                 "AndroidLibXrayLite",
-                if (engine == EngineKind.XRAY) "АКТИВНО" else "ВЫБРАТЬ",
+                if (engine == EngineKind.XRAY) "АCTIVE" else "SELECT",
                 selected = engine == EngineKind.XRAY,
                 onClick = { engine = EngineKind.XRAY },
             )
@@ -1316,13 +1316,13 @@ private fun VpnSettingsDetails(
         item {
             SettingsCard(
                 "sing-box",
-                "Изолированное ядро · SOCKS 127.0.0.1:10808",
-                if (engine == EngineKind.SING_BOX) "АКТИВНО" else "ВЫБРАТЬ",
+                "Isolated engine · SOCKS 127.0.0.1:10808",
+                if (engine == EngineKind.SING_BOX) "АCTIVE" else "SELECT",
                 selected = engine == EngineKind.SING_BOX,
                 onClick = { engine = EngineKind.SING_BOX },
             )
         }
-        item { SettingsSectionTitle("VPN-ИНТЕРФЕЙС") }
+        item { SettingsSectionTitle("VPN INTERFACE") }
         item {
             OutlinedTextField(
                 value = mtu,
@@ -1336,7 +1336,7 @@ private fun VpnSettingsDetails(
             OutlinedTextField(
                 value = dnsServer,
                 onValueChange = { dnsServer = it.take(253) },
-                label = { Text("DNS-сервер") },
+                label = { Text("DNS Server") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1350,7 +1350,7 @@ private fun VpnSettingsDetails(
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("IPv6", fontWeight = FontWeight.Medium)
-                        Text("Адрес и маршрут IPv6 в Android TUN и HEV", color = Muted, fontSize = 12.sp)
+                        Text("Enable IPv6 address and routing in Android TUN", color = Muted, fontSize = 12.sp)
                     }
                     Switch(checked = ipv6Enabled, onCheckedChange = { ipv6Enabled = it })
                 }
@@ -1363,17 +1363,17 @@ private fun VpnSettingsDetails(
                 onClick = {
                     runCatching { VpnSettings.validate(mtu, dnsServer, ipv6Enabled, engine, routingMode, routingRules) }
                         .onSuccess { validationError = null; onSave(it) }
-                        .onFailure { validationError = it.message ?: "Некорректные настройки" }
+                        .onFailure { validationError = it.message ?: "Invalid Settings" }
                 },
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(16.dp),
-            ) { Text("СОХРАНИТЬ") }
+            ) { Text("SAVE") }
         }
         if (showAdvanced) {
-        item { SettingsSectionTitle("ТРАНСПОРТ И ДИАГНОСТИКА") }
-        item { SettingsCard("HEV tun2socks", "Android TUN → HEV → SOCKS 127.0.0.1:10808 → ${if (engine == EngineKind.XRAY) "Xray" else "sing-box"}", "ВКЛЮЧЕНО") }
-        item { SettingsCard("Постоянный журнал", "Core/service stack trace, поиск, фильтры, экспорт, ротация 2 МБ", "ВКЛЮЧЕНО") }
-        item { SettingsCard("Версия приложения", "Alpha · настройки применяются при следующем подключении", BuildConfig.VERSION_NAME) }
+        item { SettingsSectionTitle("TRANSPORT & DIAGNOSIS") }
+        item { SettingsCard("HEV tun2socks", "Android TUN → HEV → SOCKS 127.0.0.1:10808 → ${if (engine == EngineKind.XRAY) "Xray" else "sing-box"}", "ENABLED") }
+        item { SettingsCard("Persistent Logs", "Core/service stack trace, search, filter, export, 2 MB rotation", "ENABLED") }
+        item { SettingsCard("App Version", "Alpha · Settings apply on the next connection", BuildConfig.VERSION_NAME) }
         }
     }
 }
@@ -1458,7 +1458,7 @@ private fun serverCountLabel(count: Int): String {
         count % 10 in 2..4 -> "сервера"
         else -> "серверов"
     }
-    return "$count $form · проверка TCP-соединения"
+    return "$count $form · Servers · TCP Connectivity Check"
 }
 
 private fun formatDuration(durationMillis: Long): String {
@@ -1475,9 +1475,9 @@ private fun engineName(engine: EngineKind): String = when (engine) {
 }
 
 private fun stateLabel(state: VpnSessionState): String = when (state) {
-    VpnSessionState.Disconnected -> "Отключено"
-    is VpnSessionState.Connecting -> "Подключение"
-    is VpnSessionState.Connected -> "Подключено"
-    is VpnSessionState.Disconnecting -> "Отключение"
-    is VpnSessionState.Error -> "Ошибка"
+    VpnSessionState.Disconnected -> "Disconnected"
+    is VpnSessionState.Connecting -> "Connecting"
+    is VpnSessionState.Connected -> "Connected"
+    is VpnSessionState.Disconnecting -> "Disconnecting"
+    is VpnSessionState.Error -> "Error"
 }
