@@ -388,8 +388,8 @@ private fun LustTheme(content: @Composable () -> Unit) {
 }
 
 private enum class AppTab(val title: String) {
-    HOME("Подключение"),
-    SETTINGS("Настройки"),
+    HOME("HOME"),
+    SETTINGS("SETTINGS"),
 }
 
 @Composable
@@ -528,7 +528,7 @@ private fun LustApp(
         AlertDialog(
             onDismissRequest = onDismissMessage,
             confirmButton = { TextButton(onClick = onDismissMessage) { Text("OK") } },
-            title = { Text(if (text.contains("добавлена") || text.contains("обновлена")) "Готово" else "Lust") },
+            title = { Text(if (text.contains("добавлена") || text.contains("обновлена")) "Done" else "TRENZYCH VPN") },
             text = { Text(text) },
         )
     }
@@ -780,7 +780,7 @@ private fun PowerIcon(modifier: Modifier = Modifier) {
 
 @Composable
 private fun FavoriteIcon(filled: Boolean, modifier: Modifier = Modifier) {
-    Canvas(modifier.semantics { contentDescription = if (filled) "Убрать из избранного" else "Добавить в избранное" }) {
+    Canvas(modifier.semantics { contentDescription = if (filled) "Remove From Favorites" else "Add to Favorites" }) {
         val outer = size.minDimension * .46f
         val inner = outer * .45f
         val path = Path()
@@ -797,7 +797,7 @@ private fun FavoriteIcon(filled: Boolean, modifier: Modifier = Modifier) {
 
 @Composable
 private fun CloseIcon(modifier: Modifier = Modifier) {
-    Canvas(modifier.semantics { contentDescription = "Удалить подписку" }) {
+    Canvas(modifier.semantics { contentDescription = "Delete Subscription" }) {
         val inset = size.minDimension * .28f
         drawLine(Danger, Offset(inset, inset), Offset(size.width - inset, size.height - inset), 2.dp.toPx())
         drawLine(Danger, Offset(size.width - inset, inset), Offset(inset, size.height - inset), 2.dp.toPx())
@@ -806,7 +806,7 @@ private fun CloseIcon(modifier: Modifier = Modifier) {
 
 @Composable
 private fun ChevronIcon(modifier: Modifier = Modifier) {
-    Canvas(modifier.semantics { contentDescription = "Выбранный маршрут" }) {
+    Canvas(modifier.semantics { contentDescription = "Select Route" }) {
         val path = Path().apply {
             moveTo(size.width * .35f, size.height * .2f)
             lineTo(size.width * .65f, size.height * .5f)
@@ -821,7 +821,7 @@ private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
     OutlinedButton(
         modifier = Modifier.semantics {
             this.selected = selected
-            stateDescription = if (selected) "Выбрано" else "Не выбрано"
+            stateDescription = if (selected) "Selectes" else "Not Selected"
         },
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
@@ -841,7 +841,7 @@ private fun ReferenceServerRow(
     Surface(
         modifier = Modifier.fillMaxWidth().semantics {
             this.selected = selected
-            stateDescription = if (selected) "Выбранный сервер" else "Сервер не выбран"
+            stateDescription = if (selected) "Select Server" else "Server Not Selected"
         }.clickable(onClick = onSelect),
         color = if (selected) AccentSoft else SurfaceColor,
         shape = RoundedCornerShape(12.dp),
@@ -868,20 +868,20 @@ private fun ReferenceServerRow(
 }
 
 private fun subscriptionUsageLabel(subscription: Subscription): String {
-    val usage = subscription.usage ?: return if (subscription.updatedAt > 0L) "Обновлено" else "Ожидает обновления"
+    val usage = subscription.usage ?: return if (subscription.updatedAt > 0L) "Updated" else "Waiting for Update"
     val parts = mutableListOf<String>()
     usage.usedBytes?.let { used ->
         val total = usage.totalBytes
-        parts += if (total != null && total > 0L) "${formatBytes(used)} из ${formatBytes(total)}" else "Использовано ${formatBytes(used)}"
+        parts += if (total != null && total > 0L) "${formatBytes(used)} из ${formatBytes(total)}" else "Used ${formatBytes(used)}"
     }
     usage.expiresAtEpochSeconds?.let { seconds ->
-        parts += "до ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(seconds * 1000L))}"
+        parts += "Until ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(seconds * 1000L))}"
     }
-    return parts.joinToString(" · ").ifBlank { "Метаданные недоступны" }
+    return parts.joinToString(" · ").ifBlank { "Metadata Unavailable" }
 }
 
 private fun formatBytes(bytes: Long): String {
-    val units = arrayOf("Б", "КБ", "МБ", "ГБ", "ТБ")
+    val units = arrayOf("B","KB","MB","GB","TB")
     var value = bytes.toDouble()
     var unit = 0
     while (value >= 1024.0 && unit < units.lastIndex) { value /= 1024.0; unit++ }
@@ -906,7 +906,7 @@ private fun HomeSubscriptionCard(
                 Text(subscription.name, color = ContentPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(subscriptionUsageLabel(subscription), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            TextButton(onClick = { onUpdate(subscription) }, enabled = !loading) { Text("ОБНОВИТЬ", color = Accent, fontSize = 10.sp) }
+            TextButton(onClick = { onUpdate(subscription) }, enabled = !loading) { Text("UPDATE", color = Accent, fontSize = 10.sp) }
             TextButton(onClick = { onRemove(subscription) }, enabled = !loading, modifier = Modifier.size(48.dp)) {
                 CloseIcon(Modifier.size(24.dp))
             }
@@ -937,13 +937,13 @@ private fun ServersScreen(
 ) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ScreenTitle("Серверы", serverCountLabel(servers.size), Modifier.weight(1f))
+            ScreenTitle("Servers", serverCountLabel(servers.size), Modifier.weight(1f))
             TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                Text(if (latencyTesting) "ПРОВЕРКА…" else "ПРОВЕРИТЬ ВСЕ", color = Accent)
+                Text(if (latencyTesting) "Checking…" else "Check All", color = Accent)
             }
         }
         Spacer(Modifier.height(18.dp))
-        if (servers.isEmpty()) EmptyState("Нет серверов", "Добавь ссылку подписки — серверы появятся здесь.", "ДОБАВИТЬ ПОДПИСКУ", openSubscriptions)
+        if (servers.isEmpty()) EmptyState("No Server", "Add a subscription URL to import servers.", "ADD SUBSCRIPTION", openSubscriptions)
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(servers, key = { it.id }) { server ->
                 val active = server.id == selected?.id
@@ -963,10 +963,10 @@ private fun ServersScreen(
                         }
                         val latency = latencyResults[server.id]
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(if (active) "ВЫБРАН" else server.protocol.uppercase(), color = if (active) Accent else Muted, fontSize = 10.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                            Text(if (active) "SELECTED" else server.protocol.uppercase(), color = if (active) Accent else Muted, fontSize = 10.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                             if (latency != null) {
                                 Text(
-                                    latency.latencyMillis?.let { "$it мс" } ?: "НЕДОСТУПЕН",
+                                    latency.latencyMillis?.let { "$it мс" } ?: "OFFLINE",
                                     color = if (latency.latencyMillis != null) Success else Danger,
                                     fontSize = 11.sp,
                                 )
@@ -987,11 +987,11 @@ private fun SubscriptionsScreen(
     var showAdd by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ScreenTitle("Подписки", "${subscriptions.size} добавлено", Modifier.weight(1f))
-            Button(onClick = { showAdd = true }, enabled = !loading, shape = RoundedCornerShape(14.dp)) { Text("+ ДОБАВИТЬ") }
+            ScreenTitle("Subscriptions", "${subscriptions.size} Added", Modifier.weight(1f))
+            Button(onClick = { showAdd = true }, enabled = !loading, shape = RoundedCornerShape(14.dp)) { Text("+ ADD") }
         }
         Spacer(Modifier.height(18.dp))
-        if (subscriptions.isEmpty()) EmptyState("Подписок пока нет", "Вставь URL подписки. Lust загрузит и разберёт серверы автоматически.", "+ ДОБАВИТЬ", { showAdd = true })
+        if (subscriptions.isEmpty()) EmptyState("No Subscription", "Paste a subscription URL. TRENZYCH VPN will import servers automatically.", "+ ADD", { showAdd = true })
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(subscriptions, key = { it.id }) { subscription ->
                 Card(
@@ -1005,8 +1005,8 @@ private fun SubscriptionsScreen(
                         Text(subscription.url, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { onUpdate(subscription) }, enabled = !loading) { Text("ОБНОВИТЬ") }
-                            TextButton(onClick = { onRemove(subscription) }, enabled = !loading) { Text("УДАЛИТЬ", color = Danger) }
+                            OutlinedButton(onClick = { onUpdate(subscription) }, enabled = !loading) { Text("UPDATE") }
+                            TextButton(onClick = { onRemove(subscription) }, enabled = !loading) { Text("DELETE", color = Danger) }
                         }
                     }
                 }
@@ -1029,11 +1029,11 @@ private fun AddSubscriptionDialog(
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новая подписка") },
+        title = { Text("New Subscription") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Название (необязательно)") }, singleLine = true)
-                OutlinedTextField(value = url, onValueChange = { url = it.trim(); clipboardError = false }, label = { Text("URL подписки") }, placeholder = { Text("https://…") }, singleLine = true)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name (Optional)") }, singleLine = true)
+                OutlinedTextField(value = url, onValueChange = { url = it.trim(); clipboardError = false }, label = { Text("Subscription URL") }, placeholder = { Text("https://…") }, singleLine = true)
                 OutlinedButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = clipboard.primaryClip
@@ -1045,13 +1045,13 @@ private fun AddSubscriptionDialog(
                         clipboardError = false
                     }
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Text("ВСТАВИТЬ ИЗ БУФЕРА")
+                    Text("PASTE FROM CLIPBOARD")
                 }
-                if (clipboardError) Text("В буфере нет ссылки подписки", color = Danger, fontSize = 12.sp)
+                if (clipboardError) Text("No Subscription URL Found in Clipboard", color = Danger, fontSize = 12.sp)
             }
         },
-        confirmButton = { Button(onClick = { onAdd(name.trim(), url.trim()) }, enabled = url.startsWith("https://") || url.startsWith("http://")) { Text("ДОБАВИТЬ") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("ОТМЕНА") } },
+        confirmButton = { Button(onClick = { onAdd(name.trim(), url.trim()) }, enabled = url.startsWith("https://") || url.startsWith("http://")) { Text("ADD") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
     )
 }
 
@@ -1078,8 +1078,8 @@ private fun EmbeddedLogConsole(
                     Text(">_", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
-                    Text("ЛОГИ", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text("${entries.size} событий · ${if (expanded) "нажми, чтобы свернуть" else "нажми, чтобы развернуть"}", color = Muted, fontSize = 10.sp)
+                    Text("LOGS", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("${entries.size} Events · ${if (expanded) "Tap to Collapse" else "Tap to Expand"}", color = Muted, fontSize = 10.sp)
                 }
                 Text(if (expanded) "⌃" else "⌄", color = Accent, fontSize = 22.sp)
             }
@@ -1087,7 +1087,7 @@ private fun EmbeddedLogConsole(
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Outline))
                 if (recent.isEmpty()) {
                     Text(
-                        "Журнал пуст. События подключения появятся здесь.",
+                        "Log is empty. Connection events will appear here.",
                         color = Muted,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(16.dp),
@@ -1098,8 +1098,8 @@ private fun EmbeddedLogConsole(
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onExport, enabled = entries.isNotEmpty()) { Text("ЭКСПОРТ", color = if (entries.isNotEmpty()) Accent else Muted, fontSize = 10.sp) }
-                    TextButton(onClick = onClear, enabled = entries.isNotEmpty()) { Text("ОЧИСТИТЬ", color = if (entries.isNotEmpty()) Danger else Muted, fontSize = 10.sp) }
+                    TextButton(onClick = onExport, enabled = entries.isNotEmpty()) { Text("EXPORT", color = if (entries.isNotEmpty()) Accent else Muted, fontSize = 10.sp) }
+                    TextButton(onClick = onClear, enabled = entries.isNotEmpty()) { Text("CLEAR", color = if (entries.isNotEmpty()) Danger else Muted, fontSize = 10.sp) }
                 }
             }
         }
