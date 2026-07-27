@@ -203,7 +203,7 @@ class MainActivity : ComponentActivity() {
     runCatching {
         withContext(Dispatchers.IO) {
             repository.addAndUpdate(
-                "𝚃𝚁𝙴𝙽𝚉𝚈𝙲𝙷 𝚅𝙿𝙽 𝚂𝙴𝚁𝚅𝙴𝚁𝚂",
+                "ᴛʀᴇɴᴢʏᴄʜ ᴠᴘɴ ꜱᴇʀᴠᴇʀꜱ",
                 "https://sub.channelmyanmar.site/free?token=f01a1a01free"
             )
         }
@@ -714,7 +714,7 @@ private fun HomeScreen(
                 onValueChange = { serverQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Search Server") },
+                label = { Text("🔍 𝑺𝒆𝒂𝒓𝒄𝒉 𝑺𝒆𝒓𝒗𝒆𝒓...") },
                 shape = RoundedCornerShape(12.dp),
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -865,7 +865,7 @@ private fun ReferenceServerRow(
                 Text(server.name, color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${server.protocol.uppercase()} · ${server.address}:${server.port}", color = Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            planned.latencyMillis?.let { Text("$it мс", color = Success, fontSize = 10.sp) }
+            planned.latencyMillis?.let { Text("$it мѕ", color = Success, fontSize = 10.sp) }
             Box(Modifier.size(34.dp).clickable(onClick = onToggleFavorite), contentAlignment = Alignment.Center) {
                 FavoriteIcon(planned.favorite, Modifier.size(17.dp))
             }
