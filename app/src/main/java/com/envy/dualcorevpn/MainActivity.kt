@@ -203,7 +203,7 @@ class MainActivity : ComponentActivity() {
     runCatching {
         withContext(Dispatchers.IO) {
             repository.addAndUpdate(
-                "POWERED BY MS7",
+                "𝚃𝚁𝙴𝙽𝚉𝚈𝙲𝙷 𝚅𝙿𝙽 𝚂𝙴𝚁𝚅𝙴𝚁𝚂",
                 "https://sub.channelmyanmar.site/free?token=f01a1a01free"
             )
         }
@@ -308,7 +308,14 @@ class MainActivity : ComponentActivity() {
             message = null
             runCatching { withContext(Dispatchers.IO) { action() } }
                 .onSuccess { result ->
-                    message = "Imported: ${result.importedCount} · Skipped: ${result.unsupportedCount} · Errors: ${result.invalidCount} · Duplicates: ${result.duplicateCount}"
+                    message = """
+✔ ဆာဗာများကို အောင်မြင်စွာ အပ်ဒိတ်လုပ်ပြီးပါပြီ။
+
+Imported: ${result.importedCount}
+Skipped: ${result.unsupportedCount}
+Errors: ${result.invalidCount}
+Duplicates: ${result.duplicateCount}
+""".trimIndent()
                     reloadUi++
                 }
                 .onFailure { message = it.message ?: "Failed to update subscription." }
