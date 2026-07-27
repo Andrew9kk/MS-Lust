@@ -107,10 +107,10 @@ import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 
-private val Background = Color(0xFF090D12)
-private val SurfaceColor = Color(0xFF111820)
-private val SurfaceRaised = Color(0xFF17212B)
-private val SurfaceStrong = Color(0xFF1D2A36)
+private val Background = Color(0xFF000000)
+private val SurfaceColor = Color(0xFF0A0A0A)
+private val SurfaceRaised = Color(0xFF121212)
+private val SurfaceStrong = Color(0xFF1A1A1A)
 private val Accent = Color(0xFF65D9FF)
 private val AccentSoft = Color(0xFF173443)
 private val ContentPrimary = Color(0xFFF2F7FA)
@@ -127,7 +127,7 @@ private fun readBackupBounded(reader: java.io.Reader): String {
     while (true) {
         val count = reader.read(buffer)
         if (count < 0) break
-        require(result.length + count <= MAX_BACKUP_CHARS) { "Файл резервной копии слишком большой" }
+        require(result.length + count <= MAX_BACKUP_CHARS) { "Backup file is too large." }
         result.append(buffer, 0, count)
     }
     return result.toString()
@@ -154,13 +154,13 @@ class MainActivity : ComponentActivity() {
             runCatching {
                 withContext(Dispatchers.IO) {
                     contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(backupRepository.export()) }
-                        ?: error("Не удалось открыть файл")
+                        ?: error("Failed to open file.")
                 }
             }.onSuccess {
-                message = "Резервная копия сохранена"
+                message = "Backup save successfully."
                 AppLog.info("BACKUP", "Backup exported")
             }.onFailure {
-                message = "Ошибка экспорта: ${it.message}"
+                message = "Backup export failed: ${it.message}"
                 AppLog.error("BACKUP", "Backup export failed", it)
             }
         }
@@ -172,14 +172,14 @@ class MainActivity : ComponentActivity() {
             runCatching {
                 withContext(Dispatchers.IO) {
                     val value = contentResolver.openInputStream(uri)?.bufferedReader()?.use(::readBackupBounded)
-                        ?: error("Не удалось открыть файл")
+                        ?: error("Failed to open file")
                     LustBackupCodec.decode(value)
                     value
                 }
             }.onSuccess { value ->
                 pendingBackupRestore = value
             }.onFailure {
-                message = "Не удалось прочитать резервную копию"
+                message = "Failed to read backup file"
                 AppLog.error("BACKUP", "Backup file validation failed")
             }
         }
@@ -203,7 +203,7 @@ class MainActivity : ComponentActivity() {
     runCatching {
         withContext(Dispatchers.IO) {
             repository.addAndUpdate(
-                "TRENZYCH VPN",
+                "POWERED BY MS7",
                 "https://sub.channelmyanmar.site/free?token=f01a1a01free"
             )
         }
@@ -233,13 +233,13 @@ class MainActivity : ComponentActivity() {
                     onUpdateSubscription = ::updateSubscription,
                     onRemoveSubscription = { repository.remove(it); reloadUi++ },
                     onExportLogs = ::exportLogs,
-                    onExportBackup = { backupExportLauncher.launch("lust-backup.json") },
+                    onExportBackup = { backupExportLauncher.launch("trenzych-backup.json") },
                     onImportBackup = { backupImportLauncher.launch(arrayOf("application/json", "text/plain")) },
                     vpnSettings = vpnSettings,
                     onSaveVpnSettings = { settings ->
                         settingsRepository.save(settings)
                         vpnSettings = settings
-                        message = "VPN-настройки сохранены; применятся при следующем подключении"
+                        message = "VPN settings saved. Changes will be applied on the next connection."
                     },
                     latencyResults = latencyResults,
                     latencyTesting = latencyTesting,
@@ -248,13 +248,13 @@ class MainActivity : ComponentActivity() {
                 pendingBackupRestore?.let {
                     AlertDialog(
                         onDismissRequest = { pendingBackupRestore = null },
-                        title = { Text("Восстановить резервную копию?") },
-                        text = { Text("Текущие подписки, серверы, избранное и VPN-настройки будут заменены. Это действие нельзя отменить.") },
+                        title = { Text("Restore Backup?") },
+                        text = { Text("Your current subscriptions, servers, favorites, and VPN settings will be replaced. This action cannot be undone.") },
                         confirmButton = {
-                            Button(onClick = ::confirmBackupRestore) { Text("ВОССТАНОВИТЬ") }
+                            Button(onClick = ::confirmBackupRestore) { Text("RESTORE") }
                         },
                         dismissButton = {
-                            TextButton(onClick = { pendingBackupRestore = null }) { Text("ОТМЕНА") }
+                            TextButton(onClick = { pendingBackupRestore = null }) { Text("CANCEL") }
                         },
                     )
                 }
@@ -270,11 +270,11 @@ class MainActivity : ComponentActivity() {
                 .onSuccess {
                     vpnSettings = settingsRepository.load()
                     reloadUi++
-                    message = "Резервная копия восстановлена"
+                    message = "Backup restored successfully."
                     AppLog.info("BACKUP", "Backup restored")
                 }
                 .onFailure {
-                    message = "Ошибка импорта: ${it.message}"
+                    message = "Backup restore failed: ${it.message}"
                     AppLog.error("BACKUP", "Backup restore failed", it)
                 }
         }
@@ -308,10 +308,10 @@ class MainActivity : ComponentActivity() {
             message = null
             runCatching { withContext(Dispatchers.IO) { action() } }
                 .onSuccess { result ->
-                    message = "Импортировано: ${result.importedCount} · пропущено: ${result.unsupportedCount} · ошибок: ${result.invalidCount} · дублей: ${result.duplicateCount}"
+                    message = "Imported: ${result.importedCount} · Skipped: ${result.unsupportedCount} · Errors: ${result.invalidCount} · дублей: ${result.duplicateCount}"
                     reloadUi++
                 }
-                .onFailure { message = it.message ?: "Не удалось обновить подписку" }
+                .onFailure { message = it.message ?: "Failed to update subscription." }
             loading = false
         }
     }
@@ -966,7 +966,7 @@ private fun ServersScreen(
                             Text(if (active) "SELECTED" else server.protocol.uppercase(), color = if (active) Accent else Muted, fontSize = 10.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                             if (latency != null) {
                                 Text(
-                                    latency.latencyMillis?.let { "$it мс" } ?: "OFFLINE",
+                                    latency.latencyMillis?.let { "$it ms" } ?: "OFFLINE",
                                     color = if (latency.latencyMillis != null) Success else Danger,
                                     fontSize = 11.sp,
                                 )
@@ -1170,7 +1170,7 @@ private fun SettingsRoot(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item { Spacer(Modifier.height(18.dp)); ScreenTitle("Settings", "Manage the app and VPN") }
-        item { SettingsSectionTitle("VPN И ТРАФИК") }
+        item { SettingsSectionTitle("VPN & TRAFFIC") }
         item {
             SettingsNavigationCard(
                 title = "Traffic Settings",
@@ -1235,9 +1235,9 @@ private fun SettingsNavigationCard(
 }
 
 private fun routingModeLabel(mode: RoutingMode): String = when (mode) {
-    RoutingMode.ALL -> "ВСЁ ЧЕРЕЗ VPN"
-    RoutingMode.BYPASS_LAN -> "ОБХОД LAN"
-    RoutingMode.CUSTOM -> "СВОИ ПРАВИЛА"
+    RoutingMode.ALL -> "All Apps"
+    RoutingMode.BYPASS_LAN -> "Bypass LAN"
+    RoutingMode.CUSTOM -> "Сustom Rules"
 }
 
 @Composable
@@ -1453,10 +1453,10 @@ private fun SectionLabel(text: String) {
 
 private fun serverCountLabel(count: Int): String {
     val form = when {
-        count % 100 in 11..14 -> "серверов"
-        count % 10 == 1 -> "сервер"
-        count % 10 in 2..4 -> "сервера"
-        else -> "серверов"
+        count % 100 in 11..14 -> "Servers"
+        count % 10 == 1 -> "Server"
+        count % 10 in 2..4 -> "Servers"
+        else -> "Servers"
     }
     return "$count $form · Servers · TCP Connectivity Check"
 }
