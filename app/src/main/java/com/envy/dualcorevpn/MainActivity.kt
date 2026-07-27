@@ -698,7 +698,7 @@ private fun HomeScreen(
         item { EmbeddedLogConsole(entries = logEntries, onClear = onClearLogs, onExport = onExportLogs) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("SERVER LIST", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("ꜱᴇʀᴠᴇʀ ʟɪꜱᴛ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
                     Text(if (latencyTesting) "Checking…" else "CHECK PING", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -718,8 +718,8 @@ private fun HomeScreen(
                 shape = RoundedCornerShape(12.dp),
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SortButton("NAME", serverSort == ServerSort.NAME) { serverSort = ServerSort.NAME }
-                SortButton("LATENCY", serverSort == ServerSort.LATENCY) { serverSort = ServerSort.LATENCY }
+                SortButton("ɴᴀᴍᴇ", serverSort == ServerSort.NAME) { serverSort = ServerSort.NAME }
+                SortButton("ʟᴀᴛᴇɴᴄʏ", serverSort == ServerSort.LATENCY) { serverSort = ServerSort.LATENCY }
             }
         }
         if (groups.isEmpty()) item {
@@ -743,7 +743,7 @@ private fun HomeScreen(
         }
         if (subscriptions.isNotEmpty()) item {
             Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("SUBSCRIPTIONS", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴꜱ", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text("${subscriptions.size}", color = Muted, fontSize = 11.sp)
             }
@@ -1085,7 +1085,7 @@ private fun EmbeddedLogConsole(
                     Text(">_", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
-                    Text("LOGS", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("ʟᴏɢꜱ", color = ContentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("${entries.size} Events · ${if (expanded) "Tap to Collapse" else "Tap to Expand"}", color = Muted, fontSize = 10.sp)
                 }
                 Text(if (expanded) "⌃" else "⌄", color = Accent, fontSize = 22.sp)
