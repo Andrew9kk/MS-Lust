@@ -1,4 +1,4 @@
-# TRENZYCH VPN
+# MYVPN
 
 A fast, secure, and lightweight Android VPN client built with Kotlin and Jetpack Compose.
 
@@ -30,4 +30,4 @@ GPL-3.0 License
 
 ---
 
-© TRENZYCH VPN. All rights reserved.
+© All rights reserved.
