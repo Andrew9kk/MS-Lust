@@ -535,7 +535,7 @@ private fun LustApp(
         AlertDialog(
             onDismissRequest = onDismissMessage,
             confirmButton = { TextButton(onClick = onDismissMessage) { Text("OK") } },
-            title = { Text(if (text.contains("Added") || text.contains("Updated")) "Success" else "TRENZYCH VPN") },
+            title = { Text(if (text.contains("Added") || text.contains("Updated")) "Success" else "ᴛʀᴇɴᴢʏᴄʜ ᴠᴘɴ") },
             text = { Text(text) },
         )
     }
@@ -714,7 +714,7 @@ private fun HomeScreen(
                 onValueChange = { serverQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("🔍 𝑺𝒆𝒂𝒓𝒄𝒉 𝑺𝒆𝒓𝒗𝒆𝒓...") },
+                label = { Text("𝑺𝒆𝒂𝒓𝒄𝒉 𝑺𝒆𝒓𝒗𝒆𝒓 ⌕") },
                 shape = RoundedCornerShape(12.dp),
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1287,9 +1287,9 @@ private fun VpnSettingsDetails(
         item { SettingsSectionTitle("TRAFFIC ROUTING") }
         item {
             Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SettingsCard("Route All Traffic", "All websites and apps use the selected VPN server", if (routingMode == RoutingMode.ALL) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.ALL, selectionControl = true, onClick = { routingMode = RoutingMode.ALL })
-                SettingsCard("Bypass Local Network", "Access your router and local devices directly", if (routingMode == RoutingMode.BYPASS_LAN) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.BYPASS_LAN, selectionControl = true, onClick = { routingMode = RoutingMode.BYPASS_LAN })
-                SettingsCard("Сustom Rules", "Specified domains and IPs bypass the VPN", if (routingMode == RoutingMode.CUSTOM) "ВЫБРАНО" else "ВЫБРАТЬ", selected = routingMode == RoutingMode.CUSTOM, selectionControl = true, onClick = { routingMode = RoutingMode.CUSTOM })
+                SettingsCard("Route All Traffic", "All websites and apps use the selected VPN server", if (routingMode == RoutingMode.ALL) "Selected" else "Select", selected = routingMode == RoutingMode.ALL, selectionControl = true, onClick = { routingMode = RoutingMode.ALL })
+                SettingsCard("Bypass Local Network", "Access your router and local devices directly", if (routingMode == RoutingMode.BYPASS_LAN) "Selected" else "Select", selected = routingMode == RoutingMode.BYPASS_LAN, selectionControl = true, onClick = { routingMode = RoutingMode.BYPASS_LAN })
+                SettingsCard("Сustom Rules", "Specified domains and IPs bypass the VPN", if (routingMode == RoutingMode.CUSTOM) "Selected" else "Select", selected = routingMode == RoutingMode.CUSTOM, selectionControl = true, onClick = { routingMode = RoutingMode.CUSTOM })
             }
         }
         if (routingMode == RoutingMode.CUSTOM) {
