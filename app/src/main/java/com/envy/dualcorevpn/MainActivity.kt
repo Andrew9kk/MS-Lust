@@ -308,7 +308,7 @@ class MainActivity : ComponentActivity() {
             message = null
             runCatching { withContext(Dispatchers.IO) { action() } }
                 .onSuccess { result ->
-                    message = "Imported: ${result.importedCount} · Skipped: ${result.unsupportedCount} · Errors: ${result.invalidCount} · дублей: ${result.duplicateCount}"
+                    message = "Imported: ${result.importedCount} · Skipped: ${result.unsupportedCount} · Errors: ${result.invalidCount} · Duplicates: ${result.duplicateCount}"
                     reloadUi++
                 }
                 .onFailure { message = it.message ?: "Failed to update subscription." }
@@ -337,7 +337,7 @@ class MainActivity : ComponentActivity() {
             .setStream(uri)
             .intent
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(intent, "Экспорт журнала"))
+        startActivity(Intent.createChooser(intent, "Export Logs"))
     }
 
     private fun requestConnect(config: String) {
@@ -528,7 +528,7 @@ private fun LustApp(
         AlertDialog(
             onDismissRequest = onDismissMessage,
             confirmButton = { TextButton(onClick = onDismissMessage) { Text("OK") } },
-            title = { Text(if (text.contains("добавлена") || text.contains("обновлена")) "Done" else "TRENZYCH VPN") },
+            title = { Text(if (text.contains("Added") || text.contains("Updated")) "Success" else "TRENZYCH VPN") },
             text = { Text(text) },
         )
     }
@@ -694,7 +694,7 @@ private fun HomeScreen(
                 Text("SERVER LIST", color = ContentPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onTestLatency, enabled = servers.isNotEmpty() && !latencyTesting) {
-                    Text(if (latencyTesting) "Checking…" else "PING", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(if (latencyTesting) "Checking…" else "CHECK PING", color = Accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
                 TextButton(onClick = { showAddSubscription = true }, enabled = !loading) {
                     Text("+", color = Accent, fontSize = 20.sp)
